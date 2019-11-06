@@ -1,0 +1,7 @@
+#scikit-build # for slycot (WORKAROUND BUG https://github.com/python-control/Slycot/issues/3)
+#slycot # for control.lqr()
+#control
+
+cvxopt
+cvxpy
+mpmath

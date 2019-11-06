@@ -1,0 +1,6 @@
+# Run this on a gitlab shell runner, with docker permissions (!)
+
+test:
+    script:
+        - ./run_tests_docker.sh
+        
