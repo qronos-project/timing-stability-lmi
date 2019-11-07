@@ -1,6 +1,7 @@
 # Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing
 
 This is the code for the publication "Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing" (Gaukler et al., 2019/2020; Submitted for publication).
+An extended preprint including details and proofs is available at https://arxiv.org/abs/1911.02537
 
 It shares some code with "Worst-Case Analysis of Digital Control Loops with Uncertain Input/Output Timing (Benchmark Proposal)" (Gaukler, Ulbrich 2019, ARCH - Workshop on Applied Verification for Continuous and Hybrid Systems). The code corresponding to that publication is published on https://github.com/qronos-project/arch19-benchmark-iotiming . In the future it is planned to merge the functionality of that codebase into here; meanwhile only the examples are used.
 
@@ -24,3 +25,4 @@ git clone https://github.com/qronos-project/timing-stability-lmi
 Have a look at the `Dockerfile` for the requirements of the code.
 
 Run via `cd src; python3 -m qronos.lis.analyze`.
+
