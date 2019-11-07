@@ -24,14 +24,15 @@ ADD src/qronos/requirements* /
 # For development, uncomment the following line (newest versions) and comment out the one below (fixed versions):
 # RUN pip3 install -r /requirements.txt
 RUN pip3 install -r /requirements-frozen-py3.txt
-# Regenerate requirements-frozen-py3.txt by running `pip3 freeze -l > qronos/requirements-frozen-py3.txt` inside the container.
+# Regenerate requirements-frozen-py3.txt by running `pip3 freeze -l > qronos/requirements-frozen-py3.txt` inside the container, *after it was built with the non-frozen requirements.txt*
 
-# For development, uncomment the following three lines (newest versions) and comment out the one below (fixed versions):
-# # For unknown reasons, cvxpy/setup.py installs the wrong version of numpy (too new for python2). As a workaround, explicitly install numpy:
-# RUN pip install -r /requirements.txt
-# RUN pip install "numpy>=1.15"
+# Python2:
+# For unknown reasons, cvxpy/setup.py installs the wrong version of numpy (too new for python2). As a workaround, we explicitly install numpy first.
+#
+# For development, uncomment the following line (newest versions) and comment out the one below (fixed versions):
+# RUN pip install "numpy>=1.15" && pip install -r /requirements.txt
 RUN pip install "$(cat /requirements-frozen-py2.txt | grep numpy)" && pip install -r /requirements-frozen-py2.txt
-# Regenerate requirements-frozen-py2.txt by running `pip freeze -l > qronos/requirements-frozen-py2.txt` inside the container.
+# Regenerate requirements-frozen-py2.txt by running `pip freeze -l > qronos/requirements-frozen-py2.txt` inside the container, *after it was built with the non-frozen requirements.txt*
 
 WORKDIR /src
 RUN adduser --gecos "" --disabled-password user
