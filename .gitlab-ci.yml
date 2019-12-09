@@ -1,5 +1,6 @@
 # Run this on a gitlab shell runner, with docker permissions (!)
-
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
 test:
     script:
         - ./run_tests_docker.sh

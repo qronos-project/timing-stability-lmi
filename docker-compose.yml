@@ -1,7 +1,13 @@
 version: '2'
 services:
+  base:
+    image: localhost/hyst_baseimage
+    build: ./hyst/
+    entrypoint: "true"
   web:
     build: .
+    depends_on:
+    - base
     ports:
      - "8888:8888"
     volumes:
