@@ -81,8 +81,8 @@ def cqlf(A, Delta_list, rho, beta, R_inv='auto'):
     Delta_list = [convert(D, np) for D in Delta_list]
     
     # Apply transformation
-    A = R_inv.dot(A).dot(R)
-    Delta_list = [R_inv.dot(Delta).dot(R) for Delta in Delta_list]
+    A = R_inv @ A @ R
+    Delta_list = [R_inv @ Delta @ R for Delta in Delta_list]
 
     # Solve LMI
     P = cp.Variable((nd, nd), PSD=True)
@@ -90,7 +90,7 @@ def cqlf(A, Delta_list, rho, beta, R_inv='auto'):
     
     constraints = [P << np.eye(nd), # prevent infinite P
                    P >> gamma * np.eye(nd)] # prevent singular P
-    constraints.append(A.T * P * A - (rho ** 2) * P << 0) # CQLF should be decreasing by desired factor rho
+    constraints.append(A.T @ P @ A - (rho ** 2) * P << 0) # CQLF should be decreasing by desired factor rho
     for Delta in Delta_list:
         constraints.append(Delta.T * P * Delta - (beta ** 2) * P << 0)
     objective = cp.Maximize(gamma)
@@ -128,7 +128,7 @@ def cqlf(A, Delta_list, rho, beta, R_inv='auto'):
     # and P_orig_sqrt_T = P_sqrt_T R^-1.
     # Particularly, if R approximates P_sqrt_T (where P = P_sqrt_T.T * P_sqrt_T),
     # then approximately P_orig = I, so P_orig is well-conditioned.
-    P_sqrt_T = P_sqrt_T.dot(R_inv)
+    P_sqrt_T = P_sqrt_T @ R_inv
 #    print("P_sqrt (after inverse transform)", repr(P_sqrt_T))
     
     return (P_sqrt_T, gamma)

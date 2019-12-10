@@ -12,7 +12,7 @@ def matrix_memoize_simple(func):
     """
     A simple decorator for caching the last argument.
     Only supports functions with one argument, which must be a mpmath.matrix or 2-dimensional numpy.ndarray.
-    
+
     This is a quick replacement for repoze.lru.lru_cache(1)
     """
     def equal_matrix(a, b):
@@ -30,7 +30,7 @@ def matrix_memoize_simple(func):
         else:
             # mpmath comparison returns a boolean (scalar)
             return equal
-    
+
     func._cache = (None, None)
     def wrapped_function(arg):
         assert isinstance(arg, (numpy.ndarray, mpmath.matrix, mpmath.iv.matrix)), "illegal type {}".format(type(arg))

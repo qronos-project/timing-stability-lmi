@@ -11,15 +11,16 @@ import mpmath as mp
 import numpy as np
 from mpmath import iv
 from .iv_matrix_utils import numpy_ndarray_to_mp_matrix
-from .generic_matrix import convert, check_datatype, approx_max_abs_eig
+from .generic_matrix import convert, check_datatype, approx_max_abs_eig, AbstractMatrix
 from . import lmi_cqlf
 
-from .norms import iv_P_norm, iv_P_norm_expm, approx_P_norm_expm, iv_spectral_norm, approx_P_norm
+import sys
 from datetime import datetime
 
 # TODO document datatype
 def analyze(s, datatype=None):
     datatype = check_datatype(datatype or iv)
+    d = AbstractMatrix.from_type(datatype)
     print("")
     print("")
     print("Analyzing system: {}".format(s))
@@ -32,21 +33,21 @@ def analyze(s, datatype=None):
     A = l.Ak_nominal
     rho_ideal = approx_max_abs_eig(A)
     print('spectral radius(A) = ', rho_ideal)
-    print('interval spectral_norm(A) = ', iv_spectral_norm(A))
-    
-    #%% 
-    
+    print('spectral_norm(A) = ', d.spectral_norm(A))
+
+    #%%
+
     # "Pressure factor" to reduce P_norm(A) at the cost of numerical robustness and the other goals (see other factors)
     tighteningRho = 0.8 # 0 ... 1, typically 0.8
-    
+
     print('tightening rho=', tighteningRho)
-    
-    
+
+
     precondition=True
     print('precondition=', precondition)
-    
+
     rho = 1 - (1 - rho_ideal) * tighteningRho # target rho to be shown by CQLF
-    
+
     # "Pressure factor" to reduce P_norm(Delta_A_...) at the cost of numerical robustness
     # Usually, increasing helps up to some limit, at which the numerical robustness is so low that everything "blows up"
     # 0 ... infinity, should typically be at least (m+p+m*p)/(1-rho), with rho=max(abs(eigenvalues(A)))
@@ -54,7 +55,7 @@ def analyze(s, datatype=None):
     # 0.25 is a factor approximating the "sparsity", i.e., roughly the ratio of Delta_A_... terms which are zero or smaller than the theoretical bound.
     beta = 0.25 * (s.m + s.p + s.m * s.p) / (1 - rho)
     print('beta=', beta)
-    
+
     Delta_list = []
     import itertools
     dtu_dty_combinations = list(itertools.product([l.sys.delta_t_u_min*0, l.sys.delta_t_u_min, l.sys.delta_t_u_max], [l.sys.delta_t_y_min*0, l.sys.delta_t_y_min, l.sys.delta_t_y_max]))
@@ -62,8 +63,8 @@ def analyze(s, datatype=None):
         if all(dtu==0) and all(dty==0):
             continue
         Delta_list.append(l.Ak_delta_to_nominal_approx(dtu, dty))
-    
-    
+
+
     print("")
     print("Solving CQLF LMI")
     P_list = []
@@ -75,19 +76,10 @@ def analyze(s, datatype=None):
         print("Solving CQLF for beta=", beta, " resulted in robustness gamma=", gamma)
         P_sqrt_T = numpy_ndarray_to_mp_matrix(P_sqrt_T)
         print("first approximation:")
-        pnorm_approx = approx_P_norm(M=A, P_sqrt_T=P_sqrt_T)
-        print('approx P_norm(A) = ', pnorm_approx)
-        rho_approx = pnorm_approx
-        
-        for [M1, A_cont, M2, tau, info] in l.m1_a_m2_tau():
-            print(info + ":")
-            pnorm_exp_approx = approx_P_norm_expm(P_sqrt_T, M1=M1, A=A_cont, M2=M2, tau=tau)
-            print('sampled P_norm(...expm(...)...) = ', pnorm_exp_approx)
-            rho_approx += pnorm_exp_approx
-        
+        (rho_approx, pnorm_approx) = l.rho_total(P_sqrt_T, datatype=np, verbose=True)
         print("approx rho=", rho_approx)
         P_list.append((beta, rho_approx, gamma, P_sqrt_T))
-        
+
         if pnorm_approx > 1:
             print("finding CQLF failed, retrying with lower beta. Probably this system is impossible to verify.")
             beta /= pnorm_approx
@@ -108,6 +100,7 @@ def analyze(s, datatype=None):
         print('Eccentricity alpha (approx):', max(p_sqrt_eigv)/min(p_sqrt_eigv))
     # Choose best result
     (beta, rho_approx, gamma, P_sqrt_T) = min(P_list, key=lambda x: x[1])
+    result['P_sqrt_T'] = P_sqrt_T
     print("Best rho (approx): ", rho_approx)
     result['rho_approx'] = rho_approx
     result['time_approx'] = (datetime.now() - time_start).total_seconds()
@@ -118,24 +111,27 @@ def analyze(s, datatype=None):
         print("Only inexact computation was requested. Not performing exact analysis")
         return result
     #%%
+    assert datatype == iv
     print("Exact results:")
-    pnorm = iv_P_norm(M=A, P_sqrt_T=P_sqrt_T)
-    print('interval P_norm(A) = ', pnorm)
-    rho_total = pnorm
-    for [M1, A_cont, M2, tau, info] in l.m1_a_m2_tau():
-        print(info + ":")
-        pnorm_exp = iv_P_norm_expm(P_sqrt_T, M1=M1, A=A_cont, M2=M2, tau=tau)
-        print('interval P_norm(...expm(...)) = ', pnorm_exp)
-        pnorm_exp_approx = approx_P_norm_expm(P_sqrt_T, M1=M1, A=A_cont, M2=M2, tau=tau)
-        rho_total += pnorm_exp
-        print('sampled P_norm(...expm(...)) = ', pnorm_exp_approx)
+    (rho_total, _) = l.rho_total(P_sqrt_T)
     print('Overall rho: ', rho_total)
     # The following is a simple but slightly pessimistic variant for rounding up from mpmath.mpi to float
     result['rho'] = float(mp.mpf(rho_total.b)) * 1.0000001
     result['time'] = (datetime.now() - time_start).total_seconds()
 
-    
+
     return result
+
+def analyze_cqlf_timing_range(system, datatype=None):
+    datatype = datatype or np
+    P_sqrt_T = analyze(system, np)['P_sqrt_T']
+    l = LISControlLoop(system, datatype)
+    max_abs_timing = max(abs(np.hstack((system.delta_t_u_max, system.delta_t_u_min, system.delta_t_y_max, system.delta_t_y_min))))
+    print(max_abs_timing)
+    for scaling in np.linspace(0, system.T/max_abs_timing, num=50):
+        rho_total, rho_nominal=l.rho_total(P_sqrt_T=P_sqrt_T, scale_delta_t=scaling, datatype=iv)
+        print(scaling, rho_total, (rho_total-rho_nominal)/scaling)
+
 
 def analyze_examples():
     """
@@ -149,22 +145,22 @@ def analyze_examples():
     s = examples.example_D_quadrotor_attitude_three_axis()
     problems['D2'] = s
 
-    # Example d2, timing*2    
+    # Example d2, timing*2
     s = examples.example_D_quadrotor_attitude_three_axis()
     s.increase_timing(2)
     problems[r'D2\textsubscript{b}: $2\Delta t$'] = s
-    
+
     # Example D2, dimension*2
     s = examples.example_D_quadrotor_attitude_three_axis()
     s.increase_dimension(2)
     problems[r'D2\textsubscript{c}: $2n$'] = s
-    
+
     # Example D2, dimension*2, dt_y_max=0.1*dt_y_max
     s = examples.example_D_quadrotor_attitude_three_axis()
     s.increase_dimension(2)
     s.delta_t_y_max=0.1*s.delta_t_y_max
     problems[r'D2\textsubscript{d}: $2n$, $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$'] = s
-    
+
     results = {}
     for (key, s) in problems.items():
         results[key] = analyze(s)
@@ -172,7 +168,7 @@ def analyze_examples():
 
     print(results)
     print('')
-    
+
     from ..util.latex_table import generate_table, format_float_ceil, format_float_sci_ceil
     rho_digits = 3
     columns = columns = [ ('name', 'l|', lambda i: i['name']),
@@ -186,4 +182,7 @@ def analyze_examples():
 
 
 if __name__ == "__main__":
-    analyze_examples()
+    if "range" in sys.argv:
+        analyze_cqlf_timing_range(examples.example_C_quadrotor_attitude_one_axis())
+    else:
+        analyze_examples()

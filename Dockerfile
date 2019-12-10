@@ -3,7 +3,7 @@ FROM localhost/hyst_baseimage
 # FROM ubuntu:18.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN sed 's@archive.ubuntu.com@ftp.fau.de@' -i /etc/apt/sources.list
-RUN apt-get update && apt-get -qy install jupyter python3-pip python3-numpy
+RUN apt-get update && apt-get -qy install jupyter python3-pip python3-numpy python3-deprecation
 # Note: python3-gmpy2 is recommended by python3-mpmath.
 RUN apt-get -qy install python3-mpmath python3-gmpy2 python3-repoze.lru
 # and libblas to avoid https://github.com/bodono/scs-python/issues/5

@@ -20,8 +20,8 @@ from .iv_matrix_utils import iv_matrix_mid_to_numpy_ndarray, numpy_ndarray_to_mp
 
 def iv_spectral_norm_rough(M):
     """
-    Fast but rough interval bound of spectral norm. 
-    
+    Fast but rough interval bound of spectral norm.
+
     0 <= spectral_norm(M) <= sqrt(sum of all m[i,k]^2)
     """
     norm = iv.norm(M, 2)
@@ -31,9 +31,9 @@ def iv_spectral_norm_rough(M):
 def iv_spectral_norm(M):
     """
     Good interval bound of spectral norm of a (interval) matrix
-    
+
     Theorem 3.2 from
-    
+
     Siegfried M. Rump. “Verified bounds for singular values, in particular for the
     spectral norm of a matrix and its inverse”. In: BIT Numerical Mathematics 51.2
     (Nov. 2010), pp. 367–384. DOI : 10.1007/s10543-010-0294-0.
@@ -89,7 +89,7 @@ def iv_spectral_norm(M):
 def iv_matrix_inv(M):
     """
     interval matrix inverse, with caching
-    
+
     NOTE: If you change mpmath's resolution after the first call to this function,
     you may get cached old output with the old resolution.
     """
@@ -100,8 +100,8 @@ def iv_matrix_inv(M):
 
 def iv_P_norm(M, P_sqrt_T):
     """
-    interval bound on P_norm(M), defined as max_{x in R^n} sqrt(((M x).T P (M x)) / (x.T P x))  
-    
+    interval bound on P_norm(M), defined as max_{x in R^n} sqrt(((M x).T P (M x)) / (x.T P x))
+
     with P_sqrt_T.T * P_sqrt_T = P,   where x.T P x typically is a Lyapunov function
     """
     P_sqrt_T = iv.matrix(P_sqrt_T)
@@ -116,20 +116,20 @@ def iv_P_norm(M, P_sqrt_T):
 def approx_P_norm(M, P_sqrt_T):
     """
     approximation of P_norm(M)
-    
+
     @see iv_P_norm()
     """
     M = iv_matrix_mid_to_numpy_ndarray(M)
     P_sqrt_T = iv_matrix_mid_to_numpy_ndarray(P_sqrt_T)
-    return scipy.linalg.norm(numpy.matmul(P_sqrt_T, numpy.matmul(M, scipy.linalg.inv(P_sqrt_T))), 2)
+    return scipy.linalg.norm(numpy.matmul(P_sqrt_T, numpy.matmul(M, np_matrix_inv(P_sqrt_T))), 2)
 
 
 def approx_P_sqrt_T(A, tolerance=1e-4):
     """
     Compute P_sqrt_T such that approximately iv_P_norm(M, P_sqrt_T) < max(abs(eig(A)))
-    
+
     Will raise an AssertionError if approximately max(abs(eig(A))) >= 1.
-    
+
     @param tolerance: relative factor for numerical tolerance. Decrease with caution. Increasing the tolerance will increase robustness.
     """
     A = iv_matrix_mid_as_mp(A)
@@ -151,11 +151,26 @@ def approx_P_sqrt_T(A, tolerance=1e-4):
     P_sqrt_T = numpy.linalg.cholesky(P).T
     return numpy_ndarray_to_mp_matrix(P_sqrt_T)
 
+IV_NORM_EVAL_ORDER = 10
+
+@matrix_memoize_simple
+def _iv_matrix_powers(A):
+    """
+    return the first IV_NORM_EVAL_ORDER+1 powers of A:
+    [I, A, A**2, ..., A**(IV_NORM_EVAL_ORDER)]
+    """
+    assert isinstance(A, iv.matrix)
+    A_pow = [iv.eye(len(A))]
+    for i in range(IV_NORM_EVAL_ORDER+1):
+        A_pow.append(A @ A_pow[-1])
+    return A_pow
 
 def iv_P_norm_expm(P_sqrt_T, M1, A, M2, tau):
     """
     Bound on P_norm( M1 (expm(A*t) - I) M2)  for |t| < tau
-    
+
+    using the theorem in arXiv:1911.02537, section "Norm bounding of summands"
+
     @param P_sqrt_T: see iv_P_norm()
     """
     P_sqrt_T = iv.matrix(P_sqrt_T)
@@ -168,23 +183,31 @@ def iv_P_norm_expm(P_sqrt_T, M1, A, M2, tau):
     M1_p = iv_P_norm(M=M1, P_sqrt_T=P_sqrt_T)
     M2_p = iv_P_norm(M=M2, P_sqrt_T=P_sqrt_T)
     A_p = iv_P_norm(M=A, P_sqrt_T=P_sqrt_T)
+    # A_pow[i] = A ** i
+    A_pow = _iv_matrix_powers(A)
     # Work around bug in mpmath, see comment in iv_P_norm()
     zero = iv.matrix(mp.zeros(len(A)))
     M1 = zero + M1
-    M1_Ai_M2_p = lambda i: iv_P_norm(M=M1 * (A ** i) * M2, P_sqrt_T=P_sqrt_T)
+    # terms from [arXiv:1911.02537]
+    M1_Ai_M2_p = lambda i: iv_P_norm(M=M1 @ A_pow[i] @ M2, P_sqrt_T=P_sqrt_T)
     gamma = lambda i: 1 / math.factorial(i) * (M1_Ai_M2_p(i) - M1_p * A_p ** i * M2_p)
-    # order of evaluation (currently fixed)
-    r = 10
-    max_norm = sum([gamma(i) * (tau ** i) for i in range(1, r + 1)]) + M1_p * M2_p * (iv.exp(A_p * tau) - 1)
+    max_norm = sum([gamma(i) * (tau ** i) for i in range(1, IV_NORM_EVAL_ORDER + 1)]) + M1_p * M2_p * (iv.exp(A_p * tau) - 1)
     # the lower bound is always 0 (for t=0)
     return mp.mpi([0, max_norm.b])
 
 
+@matrix_memoize_simple
+def np_matrix_inv(M):
+    """
+    interval matrix inverse, with caching
+    """
+    assert isinstance(M, numpy.ndarray)
+    return scipy.linalg.inv(M)
 
 def approx_P_norm_expm(P_sqrt_T, M1, A, M2, tau):
     """
     approximate max ( P_norm( M1 (expm(A*t) - I) M2 )  for |t| < tau )
-    
+
     @param P_sqrt_T: see iv_P_norm()
     """
     P_sqrt_T = iv_matrix_mid_to_numpy_ndarray(P_sqrt_T)
@@ -207,7 +230,7 @@ if __name__ == "__main__":
         A = mp.randmatrix(20) - 0.5
         eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
         A = 0.5 * A / max([abs(i) for i in eigv_A])
-        
+
         eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
         #print('eigenvalues(A) = ', eigv_A)
         print('spectral radius(A) = ', max([abs(i) for i in eigv_A]))

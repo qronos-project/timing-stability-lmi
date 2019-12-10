@@ -249,7 +249,7 @@ class DigitalControlLoop(object):
                                         [0,        self.C_d, 0,   0],
                                         [self.C_p, 0,        0,   0]],
                                        blocklengths)
-        A_total = expm(A_cont_total*self.T).dot(A_discrete_total)
+        A_total = expm(A_cont_total*self.T) @ A_discrete_total
         worst_eigenvalue = approx_max_abs_eig(A_total)
         accuracy = 1e-5
         if worst_eigenvalue < 1 - accuracy:
