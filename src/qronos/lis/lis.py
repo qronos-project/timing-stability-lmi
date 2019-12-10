@@ -94,7 +94,7 @@ class LISControlLoop(object):
         info_string is a textual identifier
         """
         return (self.A_ctrl @ self.expm_a_t_half(),
-                self.A_cont,
+                -self.A_cont,
                 self.A_u[u_index] - eye(self.n, datatype=self.datatype),
                 max(abs(self.sys.delta_t_u_min[u_index]), abs(self.sys.delta_t_u_max[u_index])),
                 "u {}".format(u_index))

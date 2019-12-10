@@ -25,12 +25,12 @@ class Tests(unittest.TestCase):
         rho = result['rho_approx']
         self.assertLess(rho, 0.98)
         self.assertGreater(rho, 0.78)
-        # compare with reference value which was computed 2019-12-10, to check against *future* implementation defects
+        # compare with reference value which was computed 2019-12-11, to check against *future* implementation defects
         # (Note that we do not have a 'ground truth' reference result.)
-        self.assertAlmostEqual(result['rho_approx'], 0.9138042779113741, places=8, msg="Result does not match previously saved numerical result. If the implementation was actually changed, then please adjust the reference value. Otherwise, this is an error.")
+        self.assertAlmostEqual(result['rho_approx'], 0.9138044519681982, places=8, msg="Result does not match previously saved numerical result. If the implementation was actually changed, then please adjust the reference value. Otherwise, this is an error.")
         if datatype == iv: # exact computation
             self.assertAlmostEqual(result['rho'], result['rho_approx'], places=4)
-            self.assertAlmostEqual(result['rho'], 0.913804369292595, places=8, msg="Result does not match previously saved numerical result. If the implementation was actually changed, then please adjust the reference value. Otherwise, this is an error.")
+            self.assertAlmostEqual(result['rho'], 0.9138045433500117, places=8, msg="Result does not match previously saved numerical result. If the implementation was actually changed, then please adjust the reference value. Otherwise, this is an error.")
 
 if __name__ == "__main__":
     unittest.main()
