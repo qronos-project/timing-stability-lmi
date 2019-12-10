@@ -12,7 +12,7 @@ import numpy as np
 from scipy.linalg import expm
 from collections import OrderedDict
 from .lis.np_matrix_utils import blkrepeat, blockmatrix
-
+from .lis.generic_matrix import approx_max_abs_eig
 
 class DigitalControlLoop(object):
     """
@@ -86,7 +86,7 @@ class DigitalControlLoop(object):
             We ensure that objects are not numpy matrices, because they behave slightly differently - see https://www.numpy.org/devdocs/user/numpy-for-matlab-users.html#array-or-matrix-which-should-i-use
             This is out of an abundance of caution.
             '''
-            return isinstance(a, np.ndarray) and not isinstance(a, type(np.matrix([])))
+            return isinstance(a, np.ndarray) and not isinstance(a, np.matrixlib.defmatrix.matrix)
 
         # This is one of the few parts where I hate Python and love Java: Checking types.
         for m in [self.A_p, self.B_p, self.C_p, self.A_d, self.B_d, self.C_d]:
@@ -250,7 +250,7 @@ class DigitalControlLoop(object):
                                         [self.C_p, 0,        0,   0]],
                                        blocklengths)
         A_total = expm(A_cont_total*self.T).dot(A_discrete_total)
-        worst_eigenvalue = max(abs(np.linalg.eigvals(A_total)))
+        worst_eigenvalue = approx_max_abs_eig(A_total)
         accuracy = 1e-5
         if worst_eigenvalue < 1 - accuracy:
             return 'stable'

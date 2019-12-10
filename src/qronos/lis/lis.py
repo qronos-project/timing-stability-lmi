@@ -7,10 +7,11 @@ Linear Impulsive System (LIS) model of digital control loop
 import numpy as np
 import scipy.linalg
 import mpmath as mp
-from mpmath import iv
-from .generic_matrix import blockmatrix, eye, zeros, check_datatype, convert
+from .generic_matrix import blockmatrix, eye, zeros, check_datatype, convert, expm
 from repoze.lru import lru_cache
 
+# FIXME monkey-patching...
+mp.ctx_iv.ivmpf.__float__ = lambda self: float(mp.mpf(self))
 
 class LISControlLoop(object):
     """
@@ -49,11 +50,11 @@ class LISControlLoop(object):
         self.A_u = [ eye(n, datatype) + bm([[0, 0, 0, 0],
                                             [0, 0, 0, 0],
                                             [0, 0, 0, 0],
-                                            [0, E(i - 1, s.m) * convert(s.C_d, datatype), 0, -E(i - 1, s.m)]]) 
+                                            [0, E(i - 1, s.m) @ convert(s.C_d, datatype), 0, -E(i - 1, s.m)]]) 
                      for i in range(1, s.m + 1) ]
         self.A_y = [ eye(n, datatype) + bm([[0, 0, 0, 0],
                                             [0, 0, 0, 0],
-                                            [E(i - 1, s.p) * convert(s.C_p, datatype), 0, -E(i - 1, s.p), 0],
+                                            [E(i - 1, s.p) @ convert(s.C_p, datatype), 0, -E(i - 1, s.p), 0],
                                             [0, 0, 0, 0]])
                      for i in range(1, s.p + 1) ]
         self.A_ctrl = bm([[1, 0, 0, 0],
@@ -62,14 +63,14 @@ class LISControlLoop(object):
                           [0, 0, 0, 1]])
         self.sys = s
         # The following formula is the LIS discretization for nominal timing, A(delta_t=0)
-        self.Ak_nominal = self.A_ctrl * iv.expm(self.A_cont * s.T/2) * (sum(self.A_u + self.A_y) + eye(n, datatype) * (1 - len(self.A_u) - len(self.A_y)))  * iv.expm(self.A_cont * s.T/2)                                                                
+        self.Ak_nominal = self.A_ctrl @ expm(self.A_cont * s.T/2, datatype) @ (sum(self.A_u + self.A_y) + eye(n, datatype) * (1 - len(self.A_u) - len(self.A_y))) @ expm(self.A_cont * s.T/2, datatype)                                                                
 
     @lru_cache(1)
     def expm_a_t_half(self):
         """
         expm(A*T/2)
         """
-        return iv.expm(self.A_cont * self.sys.T/2)
+        return expm(self.A_cont * self.sys.T/2, self.datatype)
     
     @lru_cache(1)
     def m1_a_m2_tau(self):
@@ -92,9 +93,9 @@ class LISControlLoop(object):
         (M1, A, M2, tau, info_string) = m1_a_m2_tau_u(i)
         info_string is a textual identifier
         """
-        return (self.A_ctrl * self.expm_a_t_half(),
+        return (self.A_ctrl @ self.expm_a_t_half(),
                 self.A_cont,
-                self.A_u[u_index] - eye(self.n, datatype=iv),
+                self.A_u[u_index] - eye(self.n, datatype=self.datatype),
                 max(abs(self.sys.delta_t_u_min[u_index]), abs(self.sys.delta_t_u_max[u_index])),
                 "u {}".format(u_index))
     
@@ -105,9 +106,9 @@ class LISControlLoop(object):
         (M1, A, M2, tau, info_string) = m1_a_m2_tau_y(i)
         info_string is a textual identifier
         """
-        return (self.A_ctrl * (self.A_y[y_index] - eye(self.n, datatype=iv)) * self.expm_a_t_half(),
+        return (self.A_ctrl @ (self.A_y[y_index] - eye(self.n, datatype=self.datatype)) @ self.expm_a_t_half(),
                 self.A_cont,
-                eye(self.n, datatype=iv),
+                eye(self.n, datatype=self.datatype),
                 max(abs(self.sys.delta_t_y_min[y_index]), abs(self.sys.delta_t_y_max[y_index])),
                 "y {}".format(y_index))
     
@@ -122,11 +123,13 @@ class LISControlLoop(object):
         dtu = mp.mpi(self.sys.delta_t_u_min[u_index], self.sys.delta_t_u_max[u_index])
         dty = mp.mpi(self.sys.delta_t_y_min[y_index], self.sys.delta_t_y_max[y_index])
         tau = (dty - dtu).b # max(dty_j - dtu_i) for the given intervals of dty_j and dtu_i
+        if self.datatype == np:
+            tau = float(tau) # convert to float
         if tau < 0:
             tau = 0
-        return (self.A_ctrl * (self.A_y[y_index] - eye(self.n, datatype=iv)),
+        return (self.A_ctrl @ (self.A_y[y_index] - eye(self.n, datatype=self.datatype)),
                 self.A_cont,
-                self.A_u[u_index] - eye(self.n, datatype=iv),
+                self.A_u[u_index] - eye(self.n, datatype=self.datatype),
                 tau,
                 "u {} combined with y {}".format(u_index, y_index))
     
@@ -140,7 +143,7 @@ class LISControlLoop(object):
             M2 = convert(M2, np)
             A = convert(A, np)
             tau = float(tau)
-            return M1.dot(scipy.linalg.expm(A*tau) - np.eye(len(A))).dot(M2)
+            return M1 @ (scipy.linalg.expm(A*tau) - np.eye(len(A))) @ M2
         for i in range(self.sys.m):
             D = D + delta_A(self.m1_a_m2_tau_u(i), tau=dtu[i])
         for i in range(self.sys.p):

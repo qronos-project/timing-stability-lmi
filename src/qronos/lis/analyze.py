@@ -5,36 +5,32 @@ from __future__ import absolute_import, division, print_function
 Stability analysis based on Linear Impulsive Systems and Linear Matrix Inequalities.
 See Gaukler et al. (2019/2020): Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing. Submitted for publication.
 """
-from math import sqrt
 from .. import examples
 from .lis import LISControlLoop
 import mpmath as mp
 import numpy as np
 from mpmath import iv
-from .iv_matrix_utils import iv_matrix_mid_as_mp, numpy_ndarray_to_mp_matrix
-from .generic_matrix import convert
+from .iv_matrix_utils import numpy_ndarray_to_mp_matrix
+from .generic_matrix import convert, check_datatype, approx_max_abs_eig
 from . import lmi_cqlf
 
 from .norms import iv_P_norm, iv_P_norm_expm, approx_P_norm_expm, iv_spectral_norm, approx_P_norm
 from datetime import datetime
 
-def analyze(s):
+# TODO document datatype
+def analyze(s, datatype=None):
+    datatype = check_datatype(datatype or iv)
     print("")
     print("")
     print("Analyzing system: {}".format(s))
+    print("Analysis is exact (interval arithmetic): {}".format(datatype == iv))
     print("Please note that some of the above parameters, eg. spaceex_... are not used in this LMI-based analysis, they are only present for reachability analysis.")
     # TODO: move the parameters mentioned above to some sub-structure, e.g. sys.param.reach.XXX
     time_start = datetime.now()
-    l = LISControlLoop(s, iv)
+    l = LISControlLoop(s, datatype)
     result = {'time_approx': None, 'time': None, 'n': l.n}
-    print([abs(i) for i in mp.eig(iv_matrix_mid_as_mp(l.Ak_nominal))[0]])
     A = l.Ak_nominal
-    eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
-    #A = 0.5 * A / max([abs(i) for i in eigv_A])
-    #eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
-    
-    #print('eigenvalues(A) = ', eigv_A)
-    rho_ideal = max([abs(i) for i in eigv_A])
+    rho_ideal = approx_max_abs_eig(A)
     print('spectral radius(A) = ', rho_ideal)
     print('interval spectral_norm(A) = ', iv_spectral_norm(A))
     
@@ -118,7 +114,9 @@ def analyze(s):
     if rho_approx > 1:
         print("Cannot show stability. Returning approximate result for instability, skipping verification.")
         return result
-    
+    if datatype == np:
+        print("Only inexact computation was requested. Not performing exact analysis")
+        return result
     #%%
     print("Exact results:")
     pnorm = iv_P_norm(M=A, P_sqrt_T=P_sqrt_T)

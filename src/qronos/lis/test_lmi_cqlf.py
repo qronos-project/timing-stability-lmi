@@ -7,17 +7,10 @@ Tests for lmi_cqlf.py
 
 from .lmi_cqlf import cqlf
 from .norms import iv_P_norm
-from .generic_matrix import convert
+from .generic_matrix import convert, approx_max_abs_eig
 from mpmath import iv
-from scipy.sparse.linalg import eigs
 import numpy as np
 import unittest
-
-def max_abs_eigenvalue(A):
-    """
-    Return max(abs(lambda_i)), where lambda_i is eigenvalue of A
-    """
-    return abs(eigs(A, k=1, which='LM')[0])
 
 
 
@@ -58,7 +51,7 @@ class Tests(unittest.TestCase):
 
     def check_cqlf(self, R_inv, beta_scale=1):    
         Ad_list = [self.Ad, self.Ad2]
-        eig = max([max_abs_eigenvalue(A) for A in Ad_list])
+        eig = max([approx_max_abs_eig(A) for A in Ad_list])
 #        print(eig)
         rho = eig * 1.1
         beta = eig * 0.25 * beta_scale # unusually high, the test problem is rather evil

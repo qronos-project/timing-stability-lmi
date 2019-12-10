@@ -4,12 +4,26 @@ from __future__ import absolute_import, division, print_function
 """
 Utilities for handling both mpmath.iv and numpy matrices in a consistent fashion.
 This is required since they behave differently and there is no implicit or easy conversion.
+
+Note that by design, numpy uses '@' for matrix multiplication and '*' for elementwise.
+However, mpmath.iv uses '*' for matrix multiplication. We patch it so that '@' also can be used for matrix multiplication.
+
+DO NOT USE '*' for matrix*matrix as it can be ambiguous.
+
+In the long-term future, this whole file should be made obsolete by any of these possible solutions:
+- augmenting mpmath.iv with proper numpy conversion support
+- augmenting mpmath.fp and replacing numpy with mpmath.fp.matrix
 """
 
 import numpy as np
 from mpmath import iv
 import mpmath
-from .iv_matrix_utils import iv_matrix_to_numpy_ndarray, iv_matrix_mid_as_mp
+from .iv_matrix_utils import iv_matrix_mid_to_numpy_ndarray
+import scipy.sparse.linalg as scipy_sparse_linalg
+import scipy.linalg
+
+# FIXME - monkey-patching so that we can use the "@" operator for mpmath.iv.matrix - this should be submitted as a patch in mpmath
+iv.matrix.__matmul__ = iv.matrix.__mul__
 
 def check_datatype(datatype):
     """
@@ -24,10 +38,6 @@ def check_datatype(datatype):
     else:
         return datatype
 
-
-# TODO: The return type of these functions is not strictly consistent for the 'numpy' case: Sometimes np.ndarray, sometimes np.matrix.
-#       (See the note in convert() below.)
-
 def convert(M, datatype):
     datatype = check_datatype(datatype)
     if datatype == iv:
@@ -37,10 +47,10 @@ def convert(M, datatype):
             return iv.matrix(M.tolist())
     elif datatype == np:
         if isinstance(M, (mpmath.matrix, iv.matrix)):
-            return iv_matrix_to_numpy_ndarray(iv_matrix_mid_as_mp(M))
+            return iv_matrix_mid_to_numpy_ndarray(M)
         else:
-            # TODO For consistency, switch to np.ndarray, and change the whole code to use "@" instead of "mpmath *" or "numpy matmul". However, this is only possible after dropping Python 2 support, which will be done after the code in ../reachability has been migrated. Currently, that code still has Python2-only dependencies.
-            return np.matrix(M)
+            return np.array(M)
+
 
 def zeros(a, b, datatype=None):
     '''
@@ -60,6 +70,19 @@ def eye(n, datatype=None):
     '''
     datatype = check_datatype(datatype)
     return datatype.eye(n)
+
+def expm(M, datatype=None):
+    '''
+    matrix exponential of M in given datatype
+    
+    datatype: numpy (default) or mpmath.iv
+    '''
+    datatype = check_datatype(datatype)
+    if datatype == iv:
+        return iv.expm(convert(M, datatype))
+    else:
+        return scipy.linalg.expm(convert(M, datatype))
+
 
 def blockmatrix(M, blocklengths, datatype=None):
     '''
@@ -94,3 +117,12 @@ def blockmatrix(M, blocklengths, datatype=None):
                 block_value = eye(blocklengths[i], datatype)
             output[sum(blocklengths[0:i]):sum(blocklengths[0:i+1]), sum(blocklengths[0:j]):sum(blocklengths[0:j+1])] = convert(block_value, datatype)
     return output
+
+def approx_max_abs_eig(M):
+    """
+    Return max(abs(lambda_i)), where lambda_i is eigenvalue of M
+    
+    Result is only approximate due to finite numerical precision.
+    """
+    M = convert(M, np)
+    return abs(scipy_sparse_linalg.eigs(M, k=1, which='LM')[0]) 

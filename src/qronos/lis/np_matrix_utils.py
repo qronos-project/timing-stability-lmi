@@ -1,5 +1,5 @@
 import numpy as np
-
+from . import generic_matrix
 def blkrepeat(M, repetitions):
     '''
     block-diagonal repetition of matrix M.
@@ -22,6 +22,7 @@ def blockmatrix(M, blocklengths):
     blockmatrix([[A, B], [0, C]], [a,b]) = np.block([[A, B], [zeroes(b,a), C]]).
     with matrices A,B,C of shape (a,a), (a,b), and (b,b) respectively.
     '''
+    return generic_matrix.blockmatrix(M, blocklengths, np)
     assert isinstance(M, list)
     assert len(M) == len(blocklengths)
     for i in M:

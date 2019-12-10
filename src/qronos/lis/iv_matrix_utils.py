@@ -49,8 +49,10 @@ def iv_matrix_to_numpy_ndarray(M):
     """
     return numpy.array(iv_matrix_to_mp(M).tolist(), dtype=float)
 
-# TODO deduplicate with generic_matrix
 def iv_matrix_mid_to_numpy_ndarray(M):
+    """
+    convert midpoint of interval matrix to numpy ndarray
+    """
     if isinstance(M, numpy.ndarray):
         return M
     Y=numpy.zeros((M.rows, M.cols))
