@@ -129,7 +129,7 @@ def analyze_cqlf_timing_range(system, datatype=None):
     max_abs_timing = max(abs(np.hstack((system.delta_t_u_max, system.delta_t_u_min, system.delta_t_y_max, system.delta_t_y_min))))
     print(max_abs_timing)
     for scaling in np.linspace(0, system.T/max_abs_timing, num=50):
-        rho_total, rho_nominal=l.rho_total(P_sqrt_T=P_sqrt_T, scale_delta_t=scaling, datatype=iv)
+        rho_total, rho_nominal=l.rho_total(P_sqrt_T=P_sqrt_T, scale_delta_t=scaling, datatype=datatype)
         print(scaling, rho_total, (rho_total-rho_nominal)/scaling)
 
 
