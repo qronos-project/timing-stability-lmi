@@ -159,7 +159,7 @@ def analyze_examples():
     s = examples.example_D_quadrotor_attitude_three_axis()
     s.increase_dimension(2)
     s.delta_t_y_max=0.1*s.delta_t_y_max
-    problems[r'D2\textsubscript{d}: $2n$, $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$'] = s
+    problems[r'D2\textsubscript{d}: $2n$, $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$\ifpaper{\!\!}'] = s
 
     results = {}
     for (key, s) in problems.items():
