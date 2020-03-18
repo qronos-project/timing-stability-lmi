@@ -21,13 +21,18 @@ RUN apt-get -qy install gfortran libopenblas-dev liblapack-dev cmake
 
 # Install Python dependencies which are not available as Ubuntu package:
 ADD src/qronos/requirements* /
-# For reproducibility, fixed versions are installed (generated using {pip,pip3} freeze).
+# For reproducibility, fixed versions are installed (generated using pip3 freeze).
 # For development, uncomment the following line (newest versions) and comment out the one below (fixed versions):
 # RUN pip3 install -r /requirements.txt
 RUN pip3 install -r /requirements-frozen-py3.txt
 # Regenerate requirements-frozen-py3.txt by running `pip3 freeze -l > qronos/requirements-frozen-py3.txt` inside the container, *after it was built with the non-frozen requirements.txt*
 
 WORKDIR /src
-RUN adduser --gecos "" --disabled-password user
+# configurable user and group IDs for running as non-root. 1000 is the default value. To override, use "docker --build-arg", or "CONTAINER_UID=1234 docker-compose ...", or the provided run_*.sh shell scripts.
+ARG CONTAINER_UID=1000
+ARG CONTAINER_GID=1000
+RUN echo "Using CONTAINER_UID=$CONTAINER_UID and CONTAINER_GID=$CONTAINER_GID"
+RUN addgroup user --gid $CONTAINER_GID
+RUN adduser --gecos "" --disabled-password --uid $CONTAINER_UID --gid $CONTAINER_GID user
 USER user
 CMD jupyter-notebook --ip=0.0.0.0 --port=8888  2>&1 | sed s/0.0.0.0/localhost/

@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division, print_function
 """
 Stability analysis based on Linear Impulsive Systems and Linear Matrix Inequalities.
-See Gaukler et al. (2019/2020): Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing. Submitted for publication.
+See Gaukler et al. (2019/2020): Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing. IFAC 2020 / https://arxiv.org/abs/1911.02537
 """
 from .. import examples
 from .lis import LISControlLoop
@@ -11,14 +11,28 @@ import mpmath as mp
 import numpy as np
 from mpmath import iv
 from .iv_matrix_utils import numpy_ndarray_to_mp_matrix
-from .generic_matrix import convert, check_datatype, approx_max_abs_eig, AbstractMatrix
+from .generic_matrix import check_datatype, approx_max_abs_eig, AbstractMatrix, NumpyMatrix
 from . import lmi_cqlf
+import itertools
 
 import sys
 from datetime import datetime
 
-# TODO document datatype
 def analyze(s, datatype=None):
+    """
+    Run CQLF-based analysis (Gaukler et al. 2019/2020, see https://arxiv.org/abs/1911.02537)
+
+    @param LISControlLoop s system to analyze
+    @param datatype: Datatype for analysis:
+        either mpmath.iv (exact analysis using interval arithmetic)
+        or numpy (approximate analysis)
+    @return dictionary of:
+        P_sqrt_T: CQLF matrix as defined in generic_matrix.P_norm()
+        rho_approx: fast approximation of rho
+        time_approx: time for computing only rho_approx
+        rho: proven value of rho (only if dtype==mpmath.iv)
+        time: time for computing rho and rho_approx
+    """
     datatype = check_datatype(datatype or iv)
     d = AbstractMatrix.from_type(datatype)
     print("")
@@ -26,7 +40,7 @@ def analyze(s, datatype=None):
     print("Analyzing system: {}".format(s))
     print("Analysis is exact (interval arithmetic): {}".format(datatype == iv))
     print("Please note that some of the above parameters, eg. spaceex_... are not used in this LMI-based analysis, they are only present for reachability analysis.")
-    # TODO: move the parameters mentioned above to some sub-structure, e.g. sys.param.reach.XXX
+    # TODO: move the spaceex_... parameters to some sub-structure, e.g. sys.param.reach.XXX
     time_start = datetime.now()
     l = LISControlLoop(s, datatype)
     result = {'time_approx': None, 'time': None, 'n': l.n}
@@ -39,12 +53,7 @@ def analyze(s, datatype=None):
 
     # "Pressure factor" to reduce P_norm(A) at the cost of numerical robustness and the other goals (see other factors)
     tighteningRho = 0.8 # 0 ... 1, typically 0.8
-
-    print('tightening rho=', tighteningRho)
-
-
-    precondition=True
-    print('precondition=', precondition)
+    precondition=True # use preconditioning?
 
     rho = 1 - (1 - rho_ideal) * tighteningRho # target rho to be shown by CQLF
 
@@ -95,9 +104,8 @@ def analyze(s, datatype=None):
     for i in P_list:
         (beta, rho_approx, gamma, P_sqrt_T) = i
         print('rho (approx.):', rho_approx, ' for  beta:', beta, ' with robustness gamma:', gamma)
-        # TODO: proper formula and definition for alpha, this is only a first guess (however the result is not yet used)
-        p_sqrt_eigv = np.diag(convert(P_sqrt_T, np))
-        print('Eccentricity alpha (approx):', max(p_sqrt_eigv)/min(p_sqrt_eigv))
+        p_sqrt_eigv = np.diag(NumpyMatrix.convert(P_sqrt_T))
+        print('eigenvalue spread of P_sqrt_T: (loosely indicates higher excentricity):', max(p_sqrt_eigv)/min(p_sqrt_eigv))
     # Choose best result
     (beta, rho_approx, gamma, P_sqrt_T) = min(P_list, key=lambda x: x[1])
     result['P_sqrt_T'] = P_sqrt_T
@@ -122,67 +130,97 @@ def analyze(s, datatype=None):
 
     return result
 
-def analyze_cqlf_timing_range(system, datatype=None):
+def analyze_cqlf_timing_range(system, datatype=None, P_sqrt_T=None, num_points=150):
+    """
+    How does rho scale if the timing is changed but P stays constant?
+
+    @param DigitalControlLoop system
+    @param datatype: see analyze() (optional)
+    @param P_sqrt_T: CQLF-matrix determined by analyze() (optional)
+    @param num_points: discretization steps (higher value means less pessimism)
+
+    returns (scaling_list, rho_list, offset, slope),
+         where scaling_list[i] is the factor by which the timing was scaled (0: perfect timing, 2: twice as much as given in the system model, ...)
+         and rho_list[i] the corresponding rho.
+
+         scaling_list[0]==0, so rho_list[0] is the "nominal" rho (for perfect timing).
+
+         offset and slope are determined such that
+         rho(scale) <= offset + slope * scale,
+         even for scale values inbetween the raster points of scaling_list,
+         using the fact that rho(scale1) <= rho(scale2) if 0 <= scale1 <= scale2.
+         This requires that delta_t=0 is included in the interval of allowed delta_t.
+    """
     datatype = datatype or np
-    P_sqrt_T = analyze(system, np)['P_sqrt_T']
+    if P_sqrt_T is None:
+        P_sqrt_T = analyze(system, np)['P_sqrt_T']
     l = LISControlLoop(system, datatype)
+    assert all(system.delta_t_u_min <= 0) and all(system.delta_t_u_max >= 0) \
+        and all(system.delta_t_y_min <= 0) and all(system.delta_t_y_max >= 0), \
+        "delta t=0 must be included in the timing intervals"
     max_abs_timing = max(abs(np.hstack((system.delta_t_u_max, system.delta_t_u_min, system.delta_t_y_max, system.delta_t_y_min))))
     print(max_abs_timing)
-    for scaling in np.linspace(0, system.T/max_abs_timing, num=50):
+    rho_list = np.zeros(num_points)
+    scaling_list = np.zeros(num_points)
+    i = 0
+    for scaling in np.linspace(0, system.T/2/max_abs_timing, num=num_points):
         rho_total, rho_nominal=l.rho_total(P_sqrt_T=P_sqrt_T, scale_delta_t=scaling, datatype=datatype)
-        print(scaling, rho_total, (rho_total-rho_nominal)/scaling)
+        print(scaling, rho_total, (rho_total-rho_nominal)/scaling if scaling != 0 else float('NaN'))
+        scaling_list[i] = scaling
+        rho_list[i] = rho_total
+        i = i + 1
+    offset = rho_list[1]
+    slope = np.max(np.diff(rho_list)) / np.min(np.diff(scaling_list))
+    print(f"rho(scale) <= offset + slope * scale, where offset={offset}, slope={slope}")
+    return (rho_list, scaling_list, offset, slope)
 
-
-def analyze_examples():
+def analyze_cqlf_skip(system, P_sqrt_T=None):
     """
-    Analyze some example systems to generate the table shown in
-    Gaukler et al. (2019).
+    rho=P_norm(Ak) for given P, ideal timing, but skipped events.
+
+    Returns the individual rho for every combination of skipping or not skipping events.
+    Return value is a dictionary: {(skip_ctrl, skip_u, skip_y): rho, ...}
     """
-    problems = {}
-    s = examples.example_C_quadrotor_attitude_one_axis()
-    problems['C2'] = s
+    lis = LISControlLoop(system, np)
+    if P_sqrt_T is None:
+        P_sqrt_T = analyze(system)['P_sqrt_T']
+    def boolean_vectors(length):
+        return itertools.product([True, False], repeat=length)
 
-    s = examples.example_D_quadrotor_attitude_three_axis()
-    problems['D2'] = s
+    rho={}
+    for skip_ctrl in [True, False]:
+        for skip_u in boolean_vectors(lis.sys.m):
+            for skip_y in boolean_vectors(lis.sys.p):
+                delta = lis.Ak_delta_to_nominal(skip_ctrl=skip_ctrl, skip_u=skip_u, skip_y=skip_y);
+                pnorm_a_new = NumpyMatrix.P_norm(delta + lis.Ak_nominal, P_sqrt_T)
+                rho[(skip_ctrl, skip_u, skip_y)] = pnorm_a_new
+    return rho
 
-    # Example d2, timing*2
-    s = examples.example_D_quadrotor_attitude_three_axis()
-    s.increase_timing(2)
-    problems[r'D2\textsubscript{b}: $2\Delta t$'] = s
+def analyze_cqlf_skip_condition(system, P_sqrt_T=None, condition=None):
+    """
+    maximum rho=P_norm(Ak) for given P, ideal timing, but skipped events.
 
-    # Example D2, dimension*2
-    s = examples.example_D_quadrotor_attitude_three_axis()
-    s.increase_dimension(2)
-    problems[r'D2\textsubscript{c}: $2n$'] = s
+    Which events may be skipped is restricted by a condition:
 
-    # Example D2, dimension*2, dt_y_max=0.1*dt_y_max
-    s = examples.example_D_quadrotor_attitude_three_axis()
-    s.increase_dimension(2)
-    s.delta_t_y_max=0.1*s.delta_t_y_max
-    problems[r'D2\textsubscript{d}: $2n$, $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$\ifpaper{\!\!}'] = s
+    condition(skip_ctrl: bool, skip_u: iterable[bool], skip_y: iterable[bool]):
+        boolean function, returns True if this combination of skips may occur.
+        (skip_... has the same meaning as in lis.Ak_delta_to_nominal).
+        example: condition = lambda skip_ctrl, skip_u, skip_y: skip_ctrl and not any(skip_u) and all(skip_y)
+    """
+    rho = analyze_cqlf_skip(system, P_sqrt_T)
+    return max([rho_i for ((skip_ctrl, skip_u, skip_y), rho_i) in rho.items() if condition(skip_ctrl, skip_u, skip_y)])
 
-    results = {}
-    for (key, s) in problems.items():
-        results[key] = analyze(s)
-        results[key]['name'] = key
-
-    print(results)
-    print('')
-
-    from ..util.latex_table import generate_table, format_float_ceil, format_float_sci_ceil
-    rho_digits = 3
-    columns = columns = [ ('name', 'l|', lambda i: i['name']),
-                         ('$n$', 'r', lambda i: i['n']),
-                          (r'$\tilde \rho_{\mathrm{approx}}$', 'r', lambda i: format_float_ceil(i.get('rho_approx', float('inf')), rho_digits)),
-                          (r'$|\tilde \rho - \tilde \rho_{\mathrm{approx}}|$', 'r', lambda i: '---' if not 'rho' in i else format_float_sci_ceil(i['rho'] - i['rho_approx'], 1)),
-                          ('$t_{\mathrm{approx}}$', 'r', lambda i: format_float_ceil(i.get('time_approx', float('inf')), 1)),
-                          ('$t$', 'r', lambda i: '---' if not 'time' in i else format_float_ceil(i['time'], 1)),
-                         ]
-    print(generate_table(columns, results.values()))
 
 
 if __name__ == "__main__":
     if "range" in sys.argv:
         analyze_cqlf_timing_range(examples.example_C_quadrotor_attitude_one_axis())
+    elif "skip" in sys.argv:
+        tmp = analyze_cqlf_skip(examples.example_C_quadrotor_attitude_one_axis())
+        print(" --- ")
+        print("Stability under skips, with perfect timing:")
+        print("skip(ctrl, u, y): rho")
+        for (skip, rho) in tmp.items():
+            print(f"{skip}: {rho}")
     else:
-        analyze_examples()
+        print(analyze(examples.example_C_quadrotor_attitude_one_axis()))

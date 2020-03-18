@@ -8,8 +8,10 @@ Tests for norms.py
 import mpmath as mp
 from mpmath import iv
 import unittest
-from .norms import *
+from .norms import iv_spectral_norm, iv_spectral_norm_rough, iv_matrix_to_numpy_ndarray, iv_matrix_mid_as_mp, approx_P_norm, approx_P_norm_expm, iv_P_norm, iv_P_norm_expm, approx_P_sqrt_T
 from .iv_matrix_utils import matrix_abs_max
+import scipy
+import random
 
 class Tests(unittest.TestCase):
     """
@@ -23,15 +25,18 @@ class Tests(unittest.TestCase):
         """
         self.assertIn(value, interval * (1 + iv.mpf([-1, +1]) * mp.mpf(relativeTolerance)))
         
-    def example_matrices(self, nonzero=True, random=100):
+    def example_matrices(self, include_singular=True, random=100):
         examples = [iv.matrix([[1,2],[4,5]]) + iv.mpf([-1,+1])*mp.mpf(1e-10),
-                    iv.eye(2)*0.5
+                    iv.eye(2) * 0.5,
+                    iv.diag([1, 1e-10]),
+                    iv.eye(2) * 1e-302
                     ]
         for n in [1,4,17]:
             for i in range(random // n):
                 examples.append(iv.matrix(mp.randmatrix(n)))
-        if not nonzero:
+        if include_singular:
             examples.append(iv.matrix(mp.zeros(4)))
+            examples.append(iv.diag([1, 1e-200]))
         return examples
     
     def test_matrix_abs_max(self):
@@ -43,11 +48,12 @@ class Tests(unittest.TestCase):
     def test_P_norm_and_spectral_norm(self, A=None, P_sqrt_T=None):
         if A is None:
             # call this test for some examples
-            for A in self.example_matrices():
+            for A in self.example_matrices(include_singular=True):
                 self.check_spectral_norm(A)
-                for P_sqrt_T in self.example_matrices(nonzero=True, random=3):    
+                for P_sqrt_T in self.example_matrices(include_singular=False, random=3):    
                     if len(P_sqrt_T) != len(A):
                         continue
+                    self.test_P_norm_and_spectral_norm(A, P_sqrt_T)
                     self.check_P_norm(A, P_sqrt_T)
         else:
             assert P_sqrt_T is not None
@@ -56,7 +62,7 @@ class Tests(unittest.TestCase):
             M2 = mp.randmatrix(len(A))
             tau = 0.01
             self.check_P_norm_expm(P_sqrt_T, M1, A, M2, tau)
-    
+
     def check_spectral_norm(self, M, tolerance = 1e-10):
         """
         check iv_spectral_norm() and iv_spectral_norm_rough() against a numerical result from scipy.

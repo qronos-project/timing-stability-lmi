@@ -9,7 +9,7 @@ Gaukler et al. (2019/2020): Stability Analysis of Multivariable Digital Control 
 
 import logging
 from . import norms
-from .generic_matrix import convert
+from .generic_matrix import NumpyMatrix
 try:
     import cvxpy as cp
 except ImportError:
@@ -65,7 +65,7 @@ def cqlf(A, Delta_list, rho, beta, R_inv='auto'):
         return (norms.approx_P_sqrt_T(A, (1-rho)/2), float('NaN'))
 
     # Load and convert parameters
-    A = convert(A, np)
+    A = NumpyMatrix.convert(A)
     nd = len(A)
     if R_inv is None:
         R_inv = np.eye(nd)
@@ -76,9 +76,9 @@ def cqlf(A, Delta_list, rho, beta, R_inv='auto'):
         print("Preconditioning done. Now solving actual CQLF")
         return cqlf(A, Delta_list, rho, beta, R_inv=R_inv)
     else:
-        R_inv = convert(R_inv, np)
+        R_inv = NumpyMatrix.convert(R_inv)
         R = np.linalg.inv(R_inv)
-    Delta_list = [convert(D, np) for D in Delta_list]
+    Delta_list = [NumpyMatrix.convert(D) for D in Delta_list]
     
     # Apply transformation
     A = R_inv @ A @ R
@@ -108,9 +108,9 @@ def cqlf(A, Delta_list, rho, beta, R_inv='auto'):
     try:
         P_sqrt_T = np.linalg.cholesky(P).T
     except np.linalg.LinAlgError:
-        print("Cholesky decomposition failed. Returning replacement result.")
-        return (np.eye(nd), float('inf'))
-#    print("P_sqrt (transformed)", repr(P_sqrt_T))
+        raise np.linalg.LinAlgError("Cholesky decomposition of P failed. This should not happen.")
+        # if this case happens, a valid (but useless) replacement result would be:
+        # return (np.eye(nd), float('inf'))
     
     # Transform back
     # For simplicity, the following explanation assumes Delta=0, rho=1.

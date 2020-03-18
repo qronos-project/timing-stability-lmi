@@ -11,8 +11,9 @@ https://dx.doi.org/10.29007/c4zl
 import numpy as np
 from scipy.linalg import expm
 from collections import OrderedDict
-from .lis.np_matrix_utils import blkrepeat, blockmatrix
-from .lis.generic_matrix import approx_max_abs_eig
+from .lis.np_matrix_utils import blkrepeat
+from .lis.generic_matrix import approx_max_abs_eig, NumpyMatrix
+blockmatrix = NumpyMatrix.blockmatrix
 
 class DigitalControlLoop(object):
     """
@@ -25,7 +26,7 @@ class DigitalControlLoop(object):
 
         self.x_p_0_min = None
         self.x_p_0_max = None
-        
+
         # NOTE: Disturbance is not supported yet. If support is added, please make sure to also add it in the to_latex() function.
 
         self.A_d = None
@@ -46,7 +47,7 @@ class DigitalControlLoop(object):
 
         # SpaceEx: simulation only? (deterministic x0)
         self.spaceex_only_simulate = False
-        
+
         # Normally, the automaton uses nondeterministic transitions in the semantics of Henzinger (same as SpaceEx). We need that because the sampling transition *does not necessarily have to* happen at the first possible time, it may also happen at some other time in the permitted interval [delta_t_min, delta_t_max].
         # This means that a simulator would find a "random tree" of possible solutions, however pysim does not support that and always takes the first possible transition ("urgent semantics").
         # As a workaround, this option can be enabled, so that the automaton is written in urgent semantics, and the randomness is modeled by including a (very weak, not truly random!) "pseudo-random" number generator (PRNG) in the automaton.
@@ -72,7 +73,7 @@ class DigitalControlLoop(object):
         self.spaceex_set_aggregation="none"
         # clustering percentage
         self.spaceex_clustering_percent=100
-        
+
         # results of analysis and simulation
         self.results = {}
 
@@ -81,7 +82,7 @@ class DigitalControlLoop(object):
         def isarray(a):
             '''
             determine whether object is np.array and not np.matrix
-    
+
             (Note that array has slightly different semantics than matrix!)
             We ensure that objects are not numpy matrices, because they behave slightly differently - see https://www.numpy.org/devdocs/user/numpy-for-matlab-users.html#array-or-matrix-which-should-i-use
             This is out of an abundance of caution.
@@ -130,7 +131,7 @@ class DigitalControlLoop(object):
         ret += ")"
         # TODO: unfortunately, the output of this is not directly a valid python expression for getting the system object.
         return ret
-    
+
     def to_latex(self):
         def number_to_latex(number):
             s=str(number)
@@ -206,7 +207,7 @@ class DigitalControlLoop(object):
         self.delta_t_y_max = np.tile(self.delta_t_y_max, factor)
         self.delta_t_y_min = np.tile(self.delta_t_y_min, factor)
         self._check_and_update_dimensions()
-    
+
     def increase_timing(self, factor):
         '''
         Scale up timing by a given factor
@@ -269,10 +270,10 @@ class DigitalControlLoop(object):
             if any(delta_t != 0):
                 return False
         return True
-    
+
     def is_fixed_timing(self):
         '''
         are all delta_t_min == delta_t_max?
         '''
         return all(self.delta_t_u_min == self.delta_t_u_max) and all(self.delta_t_y_min == self.delta_t_y_max)
- 
+

@@ -7,8 +7,7 @@ Tests for lmi_cqlf.py
 
 from .lmi_cqlf import cqlf
 from .norms import iv_P_norm
-from .generic_matrix import convert, approx_max_abs_eig
-from mpmath import iv
+from .generic_matrix import IntervalMatrix, approx_max_abs_eig
 import numpy as np
 import unittest
 
@@ -52,15 +51,14 @@ class Tests(unittest.TestCase):
     def check_cqlf(self, R_inv, beta_scale=1):    
         Ad_list = [self.Ad, self.Ad2]
         eig = max([approx_max_abs_eig(A) for A in Ad_list])
-#        print(eig)
         rho = eig * 1.1
         beta = eig * 0.25 * beta_scale # unusually high, the test problem is rather evil
         P_sqrt_T, _ = cqlf(A=Ad_list[0], Delta_list=[Ad_list[1]-Ad_list[0]], rho=rho, beta=beta, R_inv=R_inv)
-        pnorm = iv_P_norm(convert(Ad_list[0], iv), convert(P_sqrt_T, iv))
+        pnorm = iv_P_norm(IntervalMatrix.convert(Ad_list[0]), IntervalMatrix.convert(P_sqrt_T))
         print(pnorm)
         assert pnorm < rho + 1e-3
         for Ad in Ad_list:
-            pnorm = iv_P_norm(convert(Ad, iv), convert(P_sqrt_T, iv))
+            pnorm = iv_P_norm(IntervalMatrix.convert(Ad), IntervalMatrix.convert(P_sqrt_T))
             print(pnorm)
             assert(pnorm < rho + beta + 1e-3)
         pnorm_delta = iv_P_norm(Ad_list[1]-Ad_list[0], P_sqrt_T)
@@ -69,5 +67,5 @@ class Tests(unittest.TestCase):
         return P_sqrt_T
         
 
-if __name__=="__main__":
+if __name__ == "__main__":
     unittest.main()

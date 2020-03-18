@@ -1,11 +1,17 @@
-version: '2'
+version: '3'
 services:
   base:
     image: localhost/hyst_baseimage
     build: ./hyst/
     entrypoint: "true"
   web:
-    build: .
+    build:
+      context: .
+      args:
+      # get UID and GID from CONTAINER_UID, CONTAINER_GID, falling back to 1000.
+      # Note: docker doesn't auto-expand $UID like bash, so we can't "autodetect" the current uid
+       - CONTAINER_UID=${CONTAINER_UID:-1000}
+       - CONTAINER_GID=${CONTAINER_GID:-1000}
     depends_on:
     - base
     ports:

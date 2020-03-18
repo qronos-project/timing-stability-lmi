@@ -1,7 +1,7 @@
 # Run this on a gitlab shell runner, with docker permissions (!)
+# This effectively means that for secure isolation you should install that runner on a separate VM or PC.
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 test:
     script:
         - ./run_tests_docker.sh
-        

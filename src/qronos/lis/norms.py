@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function
 
 """
 Robust stability of general discrete-time systems using the P-norm
+
+This is a low-level interface. Please use generic_matrix if possible.
 """
 
 import scipy.linalg
@@ -14,7 +15,10 @@ import math
 import random
 from .memoize_simple import matrix_memoize_simple
 
-from .iv_matrix_utils import iv_matrix_mid_to_numpy_ndarray, numpy_ndarray_to_mp_matrix, iv_matrix_to_numpy_ndarray, iv_matrix_mid_as_mp
+# FIXME - monkey-patching so that we can use the "@" operator for mpmath.iv.matrix - this should be submitted as a patch in mpmath
+iv.matrix.__matmul__ = iv.matrix.__mul__
+
+from .iv_matrix_utils import iv_matrix_mid_to_numpy_ndarray, numpy_ndarray_to_mp_matrix, iv_matrix_to_numpy_ndarray, iv_matrix_mid_as_mp, iv_matrix_inv
 
 
 
@@ -42,36 +46,38 @@ def iv_spectral_norm(M):
     # imprecise SVD of M (no requirement on precision)
     # _, _, V_T = mp.svd(iv_matrix_mid_to_mp(M)) # <-- configurable precision
     _, _, V_T = scipy.linalg.svd(iv_matrix_mid_to_numpy_ndarray(M)) # <-- faster
-    # in [Rump 2010], SVD is defined as M = U * S * V.T,
-    # in mpmath it is M = U * S * V (not transposed) for U,S,V=svd(M)
-    # in scipy it is effectively the same as in mpmath, M = U * S * Vh for U,S,Vh = svd(M)
+    # in [Rump 2010], SVD is defined as M = U @ S @ V.T,
+    # in mpmath it is M = U @ S @ V (not transposed) for U,S,V=svd(M)
+    # in scipy it is effectively the same as in mpmath, M = U @ S @ Vh for U,S,Vh = svd(M)
     V = numpy_ndarray_to_mp_matrix(V_T).T
     # now, everything is named as in [Rump2010], except that here, A is called M.
     # all following computations are interval bounds
     V = iv.matrix(V)
-    B = M * V
-    BTB = B.T * B
+    B = M @ V
+    BTB = B.T @ B
     # split BTB such that DE = diagonal D + rest E
-    D = BTB * 0
-    E = BTB * 0
+    D = BTB @ 0
+    E = BTB @ 0
     for i in range(BTB.rows):
         for j in range(BTB.cols):
             if i == j:
                 D[i,j] = BTB[i,j]
             else:
                 E[i,j] = BTB[i,j]
-    # upper bound of spectral norm of I - V.T * V
-    alpha = iv_spectral_norm_rough(iv.eye(len(M)) - V.T * V)
+    # upper bound of spectral norm of I - V.T @ V
+    alpha = iv_spectral_norm_rough(iv.eye(len(M)) - V.T @ V)
     # upper bound of spectral norm of E
     epsilon = iv_spectral_norm_rough(E)
     # maximum of D[i,i]  (which are always >= 0)
     d_max = iv.norm(D, mp.inf)
     if alpha.b >= 1:
-        # approximation was too bad
-        return iv.mpf([0, mp.inf])
+        # this shouldn't happen - even an imprecise SVD will roughly have V.T @ V = I.
+        raise scipy.linalg.LinAlgError("Something's numerically wrong - the singular vectors are far from orthonormal")
+        # should this ever happen in reality, a valid return value would be:
+        # return iv.mpf([0, mp.inf])
     try:
         lower_bound = iv.sqrt((d_max - epsilon) / (1 + alpha)).a
-    except mp.ComplexResult:
+    except mp.libmp.libmpf.ComplexResult:
         lower_bound=0;
     # note that d_max, epsilon,alpha are intervals, so everything in the following computation is interval arithmetic
     return iv.mpf([lower_bound, iv.sqrt((d_max + epsilon) / (1 - alpha)).b])
@@ -83,26 +89,12 @@ def iv_spectral_norm(M):
 # BUG in mpmath: None == mp.zeros(1) errors
 
 
-#@repoze.lru.lru_cache(64) # doesn't work with mutable values
-#@mp.memoize # We can't use mpmath.memoize because it doesn't work properly (really slow, don't know why). Also it fails on python3.
-@matrix_memoize_simple
-def iv_matrix_inv(M):
-    """
-    interval matrix inverse, with caching
-
-    NOTE: If you change mpmath's resolution after the first call to this function,
-    you may get cached old output with the old resolution.
-    """
-    assert isinstance(M, (mp.matrix, iv.matrix))
-    M = iv.matrix(M)
-    return M**(-1)
-
 
 def iv_P_norm(M, P_sqrt_T):
     """
     interval bound on P_norm(M), defined as max_{x in R^n} sqrt(((M x).T P (M x)) / (x.T P x))
 
-    with P_sqrt_T.T * P_sqrt_T = P,   where x.T P x typically is a Lyapunov function
+    with P_sqrt_T.T @ P_sqrt_T = P,   where x.T P x typically is a Lyapunov function
     """
     P_sqrt_T = iv.matrix(P_sqrt_T)
     M = iv.matrix(M)
@@ -160,6 +152,7 @@ def _iv_matrix_powers(A):
     [I, A, A**2, ..., A**(IV_NORM_EVAL_ORDER)]
     """
     assert isinstance(A, iv.matrix)
+    A = iv.matrix(A) + mp.mpi(0,0) # workaround bug
     A_pow = [iv.eye(len(A))]
     for i in range(IV_NORM_EVAL_ORDER+1):
         A_pow.append(A @ A_pow[-1])
@@ -230,6 +223,7 @@ if __name__ == "__main__":
         A = mp.randmatrix(20) - 0.5
         eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
         A = 0.5 * A / max([abs(i) for i in eigv_A])
+        
 
         eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
         #print('eigenvalues(A) = ', eigv_A)
