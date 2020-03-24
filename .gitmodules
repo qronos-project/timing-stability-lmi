@@ -1,3 +1,6 @@
 [submodule "hyst"]
 	path = hyst
 	url = https://github.com/MaxGaukler/hyst
+[submodule "mpmath"]
+	path = mpmath
+	url = https://github.com/MaxGaukler/mpmath

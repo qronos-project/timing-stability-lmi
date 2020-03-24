@@ -27,6 +27,10 @@ ADD src/qronos/requirements* /
 RUN pip3 install -r /requirements-frozen-py3.txt
 # Regenerate requirements-frozen-py3.txt by running `pip3 freeze -l > qronos/requirements-frozen-py3.txt` inside the container, *after it was built with the non-frozen requirements.txt*
 
+# Custom mpmath version until all changes are released upstream
+ADD mpmath /mpmath
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=1.0.0 pip3 install -e /mpmath
+
 WORKDIR /src
 # configurable user and group IDs for running as non-root. 1000 is the default value. To override, use "docker --build-arg", or "CONTAINER_UID=1234 docker-compose ...", or the provided run_*.sh shell scripts.
 ARG CONTAINER_UID=1000

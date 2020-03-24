@@ -6,30 +6,20 @@ Linear Impulsive System (LIS) model of digital control loop
 """
 import numpy as np
 import mpmath as mp
-from mpmath import iv
 from .generic_matrix import check_datatype, AbstractMatrix
 from repoze.lru import lru_cache
 from deprecation import deprecated
-from numbers import Number
-
-# FIXME monkey-patching...
-mp.ctx_iv.ivmpf.__float__ = lambda self: float(mp.mpf(self))
-def interval_intersects(x: Number, y: Number) -> bool:
-    x = iv.convert(x)
-    y = iv.convert(y)
-    return (x.a in y or x.b in y or y.a in x or y.b in x)
-mp.ctx_iv.ivmpf.intersects = interval_intersects
 
 class LISControlLoop(object):
     """
     Linear Impulsive System representation of digital control loop
     """
-    def __init__(self, s, datatype):
+    def __init__(self, s, datatype=None):
         """
         Construct a LIS from a digital control loop
 
         @param DigitalControlLoop s
-        @param datatype: datatype for computations -- mpmath.iv (interval arithmetic) or numpy (standard float)
+        @param datatype: datatype for computations -- mpmath.iv (interval arithmetic) or numpy (standard float, default)
 
         NOTE: All parameters must not be modified later, as results are cached.
 
@@ -196,14 +186,14 @@ class LISControlLoop(object):
         dtu: delta_t for u
         dty: delta_t for y
         skip_...: skip actuation/sampling/controller event. The corresponding delta_t is ignored
-        method: 'sum' (default, except if skip is used): Use the Decomposition theorem from arXiv:1911.02537.
-                'impulsive' (used as a reference for tests): Discretize (simulate) the Linear Impulsive System
-
-        The result of both methods must be the same (up to numerical error).
-
-        TODO test skip_...
-
-        TODO DOC datatype
+        method:
+            'sum' (default, except if skip is used): Use the Decomposition theorem from arXiv:1911.02537.
+            'impulsive' (used as a reference for tests): Discretize (simulate) the Linear Impulsive System
+            The result of both methods must be the same (up to numerical error).
+        datatype:
+            Datatype for computations:
+            numpy (standard double-precision float) or mpmath.iv (interval arithmetic).
+            Defaults to the datatype given at initialization (which defaults to numpy).
         '''
         datatype = datatype or self.datatype
         datatype = check_datatype(datatype)

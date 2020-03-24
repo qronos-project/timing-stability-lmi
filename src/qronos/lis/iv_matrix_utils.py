@@ -71,8 +71,6 @@ def numpy_ndarray_to_mp_matrix(M):
     """
     return mp.matrix(M.tolist())
 
-#@repoze.lru.lru_cache(64) # doesn't work with mutable values
-#@mp.memoize # We can't use mpmath.memoize because it doesn't work properly (really slow, don't know why). Also it fails on python3.
 @matrix_memoize_simple
 def iv_matrix_inv(M):
     """

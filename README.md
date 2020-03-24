@@ -18,12 +18,14 @@ Install Ubuntu 18.04 in a virtual machine.
 ```
 sudo apt install docker.io docker-compose git ssh
 sudo adduser $USER docker
-git clone https://github.com/qronos-project/timing-stability-lmi
+git clone --recurse-submodules https://github.com/qronos-project/timing-stability-lmi
 ./run_experiments_docker.sh arch19 # run ARCH 2019 experiments, write all results into logfile.txt; the table from the paper can be found at the very end.
 ./run_experiments_docker.sh ifac20 # run IFAC 2020 experiments, write all results into logfile.txt; the table from the paper can be found at the very end.
 ./run_experiments_docker.sh --help # compiles everything and then shows help on further options
 ./run_webserver_docker.sh # Run a webserver with Jupyter Notebook for playing around interactively.
 ```
+
+If anything does not work or you have questions, please write an email or open an issue on GitHub.
 
 # Running locally (advanced users)
 

@@ -26,10 +26,11 @@ def matrix_equals(a, b):
 
 def matrix_memoize_simple(func):
     """
-    A simple decorator for caching the last argument.
+    A simple decorator for caching functions.
     Only supports functions with one argument, which must be a mpmath.matrix or 2-dimensional numpy.ndarray.
 
-    This is a quick and simple replacement for repoze.lru.lru_cache(10)
+    This is a quick and simple replacement for repoze.lru.lru_cache(10) or mpmath.memoize,
+    both of which don't support matrices because matrices are unhashable (mutable) objects.
     """
     CACHE_SIZE=10
     func._cache = []

@@ -49,8 +49,6 @@ def analyze(s, datatype=None):
     print('spectral radius(A) = ', rho_ideal)
     print('spectral_norm(A) = ', d.spectral_norm(A))
 
-    #%%
-
     # "Pressure factor" to reduce P_norm(A) at the cost of numerical robustness and the other goals (see other factors)
     tighteningRho = 0.8 # 0 ... 1, typically 0.8
     precondition=True # use preconditioning?
@@ -118,7 +116,6 @@ def analyze(s, datatype=None):
     if datatype == np:
         print("Only inexact computation was requested. Not performing exact analysis")
         return result
-    #%%
     assert datatype == iv
     print("Exact results:")
     (rho_total, _) = l.rho_total(P_sqrt_T)

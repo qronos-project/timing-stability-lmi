@@ -26,8 +26,6 @@ import scipy.linalg
 
 from abc import ABC, abstractmethod
 
-# FIXME - monkey-patching so that we can use the "@" operator for mpmath.iv.matrix - this should be submitted as a patch in mpmath
-iv.matrix.__matmul__ = iv.matrix.__mul__
 
 
 def check_datatype(datatype):
@@ -106,7 +104,7 @@ class AbstractMatrix(ABC):
         '''
         n x n unity matrix
         '''
-    
+
     @classmethod
     def ones(cls, a, b):
         '''

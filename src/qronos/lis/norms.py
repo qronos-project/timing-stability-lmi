@@ -15,9 +15,6 @@ import math
 import random
 from .memoize_simple import matrix_memoize_simple
 
-# FIXME - monkey-patching so that we can use the "@" operator for mpmath.iv.matrix - this should be submitted as a patch in mpmath
-iv.matrix.__matmul__ = iv.matrix.__mul__
-
 from .iv_matrix_utils import iv_matrix_mid_to_numpy_ndarray, numpy_ndarray_to_mp_matrix, iv_matrix_to_numpy_ndarray, iv_matrix_mid_as_mp, iv_matrix_inv
 
 
@@ -84,12 +81,7 @@ def iv_spectral_norm(M):
 
 
 
-
-
-# BUG in mpmath: None == mp.zeros(1) errors
-
-
-
+# TODO move to generic_matrix, this doesn't have to depend on the datatype!
 def iv_P_norm(M, P_sqrt_T):
     """
     interval bound on P_norm(M), defined as max_{x in R^n} sqrt(((M x).T P (M x)) / (x.T P x))
@@ -98,11 +90,8 @@ def iv_P_norm(M, P_sqrt_T):
     """
     P_sqrt_T = iv.matrix(P_sqrt_T)
     M = iv.matrix(M)
-    # FIXME: To a workaround a bug in mpmath we currently add a zero interval to the matrix
-    # BUG in mpmath: iv.matrix(mp.eye(2)) * (iv.ones(2) + iv.mpf([1, 2]))   errors
-    #
     # P_norm(M) = spectral norm (maximum singular value) of P_sqrt_T A P_sqrt_T**(-1)
-    return iv_spectral_norm((iv.matrix(mp.zeros(len(M))) + iv.matrix(P_sqrt_T)) * M * iv_matrix_inv(iv.matrix(P_sqrt_T)))
+    return iv_spectral_norm(iv.matrix(P_sqrt_T) @ M @ iv_matrix_inv(iv.matrix(P_sqrt_T)))
 
 
 def approx_P_norm(M, P_sqrt_T):
@@ -223,7 +212,7 @@ if __name__ == "__main__":
         A = mp.randmatrix(20) - 0.5
         eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
         A = 0.5 * A / max([abs(i) for i in eigv_A])
-        
+
 
         eigv_A, _= mp.eig(iv_matrix_mid_as_mp(A))
         #print('eigenvalues(A) = ', eigv_A)

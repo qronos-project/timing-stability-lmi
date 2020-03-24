@@ -79,6 +79,9 @@ class Tests(unittest.TestCase):
         self.assertIsInstance(x, mp.ctx_iv.ivmpf)
         self.assertLess(float(x.delta), float(abs(x).b) * rel_tolerance + abs_tolerance)
 
+    def assertIntervalIntersects(self, x: mp.ctx_iv.ivmpf, y: mp.ctx_iv.ivmpf):
+        self.assertTrue(x.a in y or x.b in y or y.a in x or y.b in x)
+
     def test_assertMatrixAlmostEqual(self):
         def test_rel_tolerance(tol, matrixClass):
             """
@@ -98,7 +101,6 @@ class Tests(unittest.TestCase):
             lower = 1e-3 * matrixClass.eye(4)
             if matrixClass == generic_matrix.IntervalMatrix:
                 upper = lower + matrixClass.ones(4, 4) * mp.mpi(-tol / 2, tol / 2)
-                print("ok")
             else:
                 upper = lower + tol * matrixClass.ones(4, 4)
             self.assertMatrixAlmostEqual(lower, upper)
@@ -125,7 +127,7 @@ class Tests(unittest.TestCase):
         elif type(A) == iv.matrix:
             for i in range(A.rows):
                 for j in range(A.cols):
-                    self.assertTrue(A[i,j].intersects(B[i,j]))
+                    self.assertIntervalIntersects(A[i,j], B[i,j])
                     self.assertIntervalWidthIsSmall(A[i,j], abs_tolerance, rel_tolerance)
                     self.assertIntervalWidthIsSmall(B[i,j], abs_tolerance, rel_tolerance)
         else:
