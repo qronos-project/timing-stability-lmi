@@ -150,7 +150,7 @@ class LISControlLoop(object):
         '''
         Return (rho_total, rho_nominal)
 
-        rho_total: upper P-norm-bound for A_k(delta_t) for all possible delta_t
+        rho_total: upper bound for P-ellipsoid norm of A_k(delta_t) for all possible delta_t
         rho_nominal: same as rho_total, but for delta_t == 0
 
         @param P_sqrt_T: matrix for CQLF, see AbstractMatrix.

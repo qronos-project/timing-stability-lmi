@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Robust stability of general discrete-time systems using the P-norm
+Robust stability of general discrete-time systems using the P-ellipsoidal norm
 
 This is a low-level interface. Please use generic_matrix if possible.
 """
@@ -84,7 +84,7 @@ def iv_spectral_norm(M):
 # TODO move to generic_matrix, this doesn't have to depend on the datatype!
 def iv_P_norm(M, P_sqrt_T):
     """
-    interval bound on P_norm(M), defined as max_{x in R^n} sqrt(((M x).T P (M x)) / (x.T P x))
+    interval bound on P-ellipsoid norm of M, defined as max_{x in R^n} sqrt(((M x).T P (M x)) / (x.T P x))
 
     with P_sqrt_T.T @ P_sqrt_T = P,   where x.T P x typically is a Lyapunov function
     """
@@ -96,7 +96,7 @@ def iv_P_norm(M, P_sqrt_T):
 
 def approx_P_norm(M, P_sqrt_T):
     """
-    approximation of P_norm(M)
+    approximation of P-ellipsoid norm of M
 
     @see iv_P_norm()
     """
@@ -149,7 +149,7 @@ def _iv_matrix_powers(A):
 
 def iv_P_norm_expm(P_sqrt_T, M1, A, M2, tau):
     """
-    Bound on P_norm( M1 (expm(A*t) - I) M2)  for |t| < tau
+    Bound on P-ellipsoid norm of (M1 (expm(A*t) - I) M2)  for |t| < tau
 
     using the theorem in arXiv:1911.02537, section "Norm bounding of summands"
 
@@ -161,7 +161,7 @@ def iv_P_norm_expm(P_sqrt_T, M1, A, M2, tau):
     M2 = iv.matrix(M2)
     # coerce tau to maximum
     tau = abs(iv.mpf(tau)).b
-    # P-norms
+    # P-ellipsoid norms
     M1_p = iv_P_norm(M=M1, P_sqrt_T=P_sqrt_T)
     M2_p = iv_P_norm(M=M2, P_sqrt_T=P_sqrt_T)
     A_p = iv_P_norm(M=A, P_sqrt_T=P_sqrt_T)

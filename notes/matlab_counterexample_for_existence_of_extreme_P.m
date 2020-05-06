@@ -2,7 +2,7 @@
 % Gaukler et al. (2019/2020): Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing. Submitted for publication.
 %
 % This file is concerned with the statement:
-% In the general case, there is no lower $P$-norm than the one guaranteed by the Theorem "Extreme Quadratic Lyapunov Function". Especially, it is not generally possible to find a $P$ such that $\|A\|_P=\rho(\{A\})$ holds exactly.
+% In the general case, there is no lower $P$-ellipsoid norm than the one guaranteed by the Theorem "Extreme Quadratic Lyapunov Function". Especially, it is not generally possible to find a $P$ such that $\|A\|_P=\rho(\{A\})$ holds exactly.
 
 % This file requires MATLAB with the symbolic and LTI toolbox. Tested on version 2018a.
 % Unfortunately it does not run on Octave due to missing collect() function in the symbolic toolbox.
@@ -34,7 +34,7 @@ assert(isAlways(determinant == sigmaSquare^2 - (a^2/c^2 + 2*rho^2) * sigmaSquare
 
 %% Explicit determination of singular value
 
-% P-norm is max. singular value of von P_half_T A P_half_T^(-1) 
+% P-ellipsoid norm is max. singular value of P_half_T A P_half_T^(-1)
 sv = svd(M)
 sv_1 = sv(1) % one of the singular values
 
