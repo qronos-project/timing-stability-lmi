@@ -270,6 +270,20 @@ class IntervalMatrix(AbstractMatrix):
         else:
             return iv.matrix(M.tolist())
 
+    @classmethod
+    def from_bounds(cls, lower=None, upper=None, lower_upper=None):
+        """
+        construct interval matrix from elementwise upper and lower bound
+
+        either given as separate vectors `lower` and `upper`, or as 2-by-n numpy array lower_upper.
+        """
+        assert ((lower is None and upper is None) != (lower_upper is None))
+        if lower_upper is not None:
+            assert lower_upper.shape == (len(lower_upper), 2)
+            lower = lower_upper[:, 0]
+            upper = lower_upper[:, 1]
+        return cls.convert(lower) + (cls.convert(upper) - cls.convert(lower)) * iv.mpf([0, 1])
+
     @staticmethod
     def convert_scalar(x):
         return iv.convert(x)

@@ -35,6 +35,7 @@ class LISControlLoop(object):
         s._check_and_update_dimensions()
         self.blocklengths = [s.n_p, s.n_d, s.p, s.m]
         self.n = n = sum(self.blocklengths)
+        assert not s.immediate_ctrl, "immediate mode is not implemented for LIS-based analysis"
         def E(i, dim):
             """
             construct matrix M (dim x dim) which is zero except for M[i,i]=1,

@@ -33,12 +33,17 @@ class DigitalControlLoop(object):
         self.B_d = None
         self.C_d = None
 
+
         # all times are given in seconds (delta_t is absolute, not relative to T)
         self.T = None
         self.delta_t_u_max = None
         self.delta_t_u_min = None
         self.delta_t_y_max = None
         self.delta_t_y_min = None
+
+        # disable the "roughly one-step delay" from x_p to y to u
+        # see DigitalControlLoop.enable_immediate_ctrl()
+        self.immediate_ctrl = False
 
         ## TODO: factor out the following reachability-related options. They are not used in the LMI-based analysis.
         # enable to add the global time t as a state for debugging
@@ -48,6 +53,9 @@ class DigitalControlLoop(object):
         # SpaceEx: simulation only? (deterministic x0)
         self.spaceex_only_simulate = False
 
+        # apply continuization? (only for internal use by HybridSysControlLoop)
+        self.continuize = False
+
         # Normally, the automaton uses nondeterministic transitions in the semantics of Henzinger (same as SpaceEx). We need that because the sampling transition *does not necessarily have to* happen at the first possible time, it may also happen at some other time in the permitted interval [delta_t_min, delta_t_max].
         # This means that a simulator would find a "random tree" of possible solutions, however pysim does not support that and always takes the first possible transition ("urgent semantics").
         # As a workaround, this option can be enabled, so that the automaton is written in urgent semantics, and the randomness is modeled by including a (very weak, not truly random!) "pseudo-random" number generator (PRNG) in the automaton.
@@ -55,12 +63,13 @@ class DigitalControlLoop(object):
         # This option does not make much sense for analysis, even though -- assuming the analysis tool uses urgent semantics -- it should in theory yield correct results with significantly less efficiency. (Except if the analysis tool is clever enough to use the weakness (non-randomness) of the pseudorandom number generator to exclude some traces that the RNG will never reach.)
         self.use_urgent_semantics_and_pseudorandom_sequence = False
 
-        # model transformation to C_d=I, C_p=I
-        self.transform_states_as_outputs=False
-
         # spaceEx configuration parameters from .cfg file
-        # maximum iterations
+        # time horizon (in multiples of the controller period)
+        self.spaceex_time_horizon_periods = 25
+        # maximum iterations (make small enough so that the timeout isn't hit)
         self.spaceex_iterations = 2000
+        # timeout (in computer time) - problematic because it may be hit on slower computers
+        self.spaceex_timeout = 7200
         # maximum iterations for "reachability over global time" plot (None: same as spaceex_iterations)
         self.spaceex_iterations_for_global_time = None
         # Scenario (overapproximation) - ignored for simulation
@@ -218,12 +227,56 @@ class DigitalControlLoop(object):
         self.delta_t_y_max = self.delta_t_y_max * factor
         self._check_and_update_dimensions()
 
+    def transform_states_to_outputs(self):
+        """
+        Model transformation to C_d=I, C_p=I.
+        Old values of C_p, C_d are merged into B_p, B_d.
+        """
+        assert self.is_nominal_timing(), "This transformation is only supported for perfect timing"
+        self.B_d = self.B_d @ self.C_p
+        self.B_p = self.B_p @ self.C_d
+        self.C_d = np.eye(self.n_d)
+        self.C_p = np.eye(self.n_p)
+        self.delta_t_u_max = np.zeros((self.n_d, ))
+        self.delta_t_u_min = np.zeros((self.n_d, ))
+        self.delta_t_y_max = np.zeros((self.n_p, ))
+        self.delta_t_y_min = np.zeros((self.n_p, ))
+        self._check_and_update_dimensions()
+
+    def enable_immediate_ctrl(self):
+        '''
+        switch to "immediate controller mode", where the dynamics are
+        \dot x_p = A_p x_p + B_p x_d
+        x_d' = B_d x_p + A_d x_d  at  t=kT
+        C_p = I
+        C_d = I
+        delta_t_u = 0
+        delta_t_y = 0.
+
+        Old values of C_p, C_d are merged into B_p, B_d.
+        Old delta_t is discarded.
+        The new dynamics however differ because they no longer have the one-step delay from x_p[k] to u[k+1].
+        Old: u[k] only depends on x_p[0] ... x_p[k-1].
+        New: u[k] also depends on x_p[k].
+        The new dynamics match what you would get for delta_t_u = -T/2 + epsilon  and delta_t_y = +T/2 - epsilon, except for a time shift by T/2.
+        This only makes sense if the real-world controller has negligible execution time.
+
+        WARNING: This mode is only supported by a small number of functions.
+        '''
+        self.increase_timing(0)
+        self.transform_states_to_outputs()
+        self.immediate_ctrl = True
+
+
+
     def nominal_case_stability(self):
         '''
         Check stability for delta_t_...=0
-        @return True if stable, False if unknown or unstable.
+        @return 'stable' or 'unstable' if stability is clearly known, otherwise another other descriptive value.
         '''
         self._check_and_update_dimensions()
+        if self.immediate_ctrl:
+            return 'not implemented for immediate_ctrl'
         # rewrite system as linear impulsive system, similar to [Gaukler et al. HSCC 2017].
         # Note that it does not matter for stability when the controller is computed,
         # as long as it is between the previous updates of u,y and the next update of u,y.

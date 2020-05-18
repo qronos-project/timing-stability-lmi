@@ -1,21 +1,38 @@
 system = system
-initially = "tau==0
+initially = "
+    {%- for i in range(1, sys.n_p+1) -%}
+        x_p_{{i}}>={{sys.x_p_0_min[i-1]}} & x_p_{{i}}<={{sys.x_p_0_max[i-1]}}
+        {%- if not loop.last -%}
+            &
+        {%- endif -%}
+    {%- endfor -%}
+    {%- if not sys.continuize -%}
+        & tau=={{ 0 if not sys.immediate_ctrl else sys.T }}
+    {%- endif -%}
     {%- if sys.global_time -%}
         & t == 0
     {%- endif -%}
-    {%- for i in range(1, sys.p+1) -%}
-        & y_sampled_{{i}}==0 & loc(Sample_y_{{i}})==done
-    {%- endfor -%}
-    {%- for i in range(1, sys.n_p+1) -%}
-        & x_p_{{i}}>={{sys.x_p_0_min[i-1]}} & x_p_{{i}}<={{sys.x_p_0_max[i-1]}}
-    {%- endfor -%}
-    {%- for i in range(1, sys.m+1) -%}
-        & u_{{i}}==0 & loc(Actuate_{{i}})==done
-    {%- endfor -%}
-    {%- for i in range(1, sys.n_d+1) -%}
-        & x_d_{{i}}==0
-    {%- endfor -%}
-    {%- if sys.use_urgent_semantics_and_pseudorandom_sequence -%}
+    {%- if not sys.immediate_ctrl and not sys.continuize -%}
+        {%- for i in range(1, sys.p+1) -%}
+            & y_sampled_{{i}}==0 & loc(Sample_y_{{i}})==done
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if not sys.immediate_ctrl and not sys.continuize -%}
+        {%- for i in range(1, sys.m+1) -%}
+            & u_{{i}}==0 & loc(Actuate_{{i}})==done
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if not sys.continuize -%}
+        {%- for i in range(1, sys.n_d+1) -%}
+            & x_d_{{i}}==0
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if sys.continuize -%}
+        {%- for i in range(1, sys.n_d+1) -%}
+            & x_c_tilde_{{i}}==0
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if sys.use_urgent_semantics_and_pseudorandom_sequence and not sys.immediate_ctrl and not sys.continuize -%}
         {# initialisation for pseudorandom states:
            The interval (0,1) is partitioned into disjoint sets, one for each pseudorandom state.
            (If two random states are initialised the same, the timing of two channels will be exactly equal and pysim will complain about "Multiple active transitions".
@@ -38,8 +55,8 @@ clustering = {{ sys.spaceex_clustering_percent }}
 flowpipe-tolerance = 1e-2
 flowpipe-tolerance-rel = 1e-3
 simu-init-sampling-points = 0
-time-horizon = {{sys.T*25}}
-iter-max = 
+time-horizon = {{sys.T * sys.spaceex_time_horizon_periods}}
+iter-max =
     {%- if sys.global_time and sys.spaceex_iterations_for_global_time %}
         {# special case: reachability over global time; differing number of iterations specified for this case #}
         {{ sys.spaceex_iterations_for_global_time }}
@@ -48,22 +65,36 @@ iter-max =
         {{ sys.spaceex_iterations }}
     {% endif %}
 output-variables = "
-    {%- if sys.global_time -%}
-    t,
-    {%- endif -%}
-    tau
     {%- for i in range(1, sys.n_p+1) -%}
-        , x_p_{{i}}
+        x_p_{{i}}
+        {%- if not loop.last -%}
+            ,
+        {%- endif -%}
     {%- endfor -%}
-    {%- for i in range(1, sys.m+1) -%}
-        , u_{{i}}
-    {%- endfor -%}
-    {%- for i in range(1, sys.p+1) -%}
-        , y_sampled_{{i}} 
-    {%- endfor -%}
-    {%- for i in range(1, sys.n_d+1) -%}
-        , x_d_{{i}}
-    {%- endfor -%}
+    {%- if sys.global_time -%}
+        , t
+    {%- endif -%}
+    {%- if not sys.continuize -%}
+        , tau
+    {%- endif -%}
+    {%- if not sys.immediate_ctrl and not sys.continuize -%}
+        {%- for i in range(1, sys.m+1) -%}
+            , u_{{i}}
+        {%- endfor -%}
+        {%- for i in range(1, sys.p+1) -%}
+            , y_sampled_{{i}}
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if not sys.continuize -%}
+        {%- for i in range(1, sys.n_d+1) -%}
+            , x_d_{{i}}
+        {%- endfor -%}
+    {%- endif -%}
+    {%- if sys.continuize -%}
+        {%- for i in range(1, sys.n_d+1) -%}
+            , x_c_tilde_{{i}}
+        {%- endfor -%}
+    {%- endif -%}
     "
 output-format = INTV
 verbosity = m

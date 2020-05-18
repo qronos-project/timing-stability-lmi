@@ -27,6 +27,8 @@ def format_float_ceil(number, digits):
     >>> format_float_ceil(1.800001,1)
     '$1.9$'
     """
+    if math.isnan(number):
+        return str(number)
     if number is None:
         return '---'
     if number == float('inf'):
@@ -41,7 +43,7 @@ def format_float_sci_ceil(number, digits):
     format floating-point value in scientific notation,
     with given given number of decimal places,
     round up last digit.
-    
+
     >>> format_float_sci_ceil(12345.67890, 3)
     '1.235 \\cdot 10^{4}'
     '''

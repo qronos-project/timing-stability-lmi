@@ -8,15 +8,22 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 import os
 import sys
 import numpy as np
-
+import scipy
+import scipy.linalg
 from qronos.controlloop import DigitalControlLoop
 from hybridpy import hypy
+from mpmath import iv
+
+from qronos.lis.generic_matrix import IntervalMatrix
 
 def template_dir():
     """
     directory with template_*.j2 template files
     """
     return os.path.dirname(os.path.realpath(__file__))
+
+def spaceex_bounds_to_array(variables):
+    return np.block([[minmax[0], minmax[1]] for minmax in variables.values()])
 
 class HybridSysControlLoop(object):
     """
@@ -26,7 +33,7 @@ class HybridSysControlLoop(object):
         assert isinstance(controlloop, DigitalControlLoop)
         self.s = controlloop
         self.results={}
-    
+
     def __repr__(self):
         return "HybridSysControlLoop(" + repr(self.s) + ")"
 
@@ -42,10 +49,20 @@ class HybridSysControlLoop(object):
             system.x_p_0_min = system.x_p_0_max
             system.spaceex_scenario = "simu"
 
-        context = { 'sys': system, 'set_of_io_dimensions': set([system.n_p, system.n_d])}
+        # FIXME: workaround for older jinja2 that doesn't support assert
+        # -> remove after update to newer jinja2
+        def my_assert(cond, msg):
+            assert cond, msg
+            return ''
+        context = { 'sys': system, 'set_of_io_dimensions': set([system.n_p, system.n_d]),
+                   'assert': my_assert, 'float': lambda x: float(x) }
         output = {}
         env = Environment(autoescape=False, loader=FileSystemLoader(template_dir()), trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
-        output['system'] = env.get_template('template_system.xml.j2').render(context)
+        # TODO merge template_system.xml and template_system_immediate.xml into one
+        assert not (system.continuize and not system.immediate_ctrl)
+        imm = '_immediate' if system.immediate_ctrl else ''
+        cont = '_continuized' if system.continuize else ''
+        output['system'] = env.get_template('template_system' + imm + cont + '.xml.j2').render(context)
         output['config'] = env.get_template('template_config.cfg.j2').render(context)
         return output
 
@@ -66,21 +83,26 @@ class HybridSysControlLoop(object):
             f.write(self.s.to_latex())
         return path_and_prefix + ".spaceex.xml"
 
-    def run_analysis(self, name, outdir):
+    def run_analysis(self, name, outdir, extra_plots=True, print_header=True):
         '''
         Analyse system with SpaceEx (practical stability via fixpoint computation) and pysim (Simulation).
         This also generates plots and saves the model files used for analysis.
 
         @param name Title (SpaceEx "system name") for plots and other output files
         @param outdir Output directory for plots and other output files
+
+        WARNING: this will modify parameters in self.s (TODO fix that)
         '''
-        print("")
-        print("====================")
-        print("Analysing System: " + name)
+        if print_header:
+            print("")
+            print("====================")
+            print("Analysing System: " + name)
+        if self.s.continuize:
+            print("Continuization enabled: Assuming a fixed bound for delta_p, delta_c, which is determined in an outer loop.")
         sys.stdout.flush()
         model_file = self.to_spaceex_files(outdir + name)
 
-        # FIXME: this will modify self.s
+        # FIXME: this will modify self.s (which is okay for how this function currently used, but may be annoying in the future)
         self.s.global_time = True
         model_file_global_time = self.to_spaceex_files(outdir + name + "__reachability_with_time_")
 
@@ -90,6 +112,7 @@ class HybridSysControlLoop(object):
         self.s.spaceex_only_simulate=False
         self.s.use_urgent_semantics_and_pseudorandom_sequence = True
         model_file_pysim = self.to_spaceex_files(outdir + name + "__for_pysim__.")
+        self.s.global_time = False
 
         # Nominal case?
         if self.s.is_nominal_timing():
@@ -109,37 +132,65 @@ class HybridSysControlLoop(object):
         pysim_initstate_corners = True
         if (self.s.n_p + self.s.n_d + self.s.m + self.s.p) > 8 or '--fast' in sys.argv:
             pysim_initstate_corners = False
-        pysim_options = '-star True -corners {corners} -rand {rand}'.format(corners=pysim_initstate_corners, rand=pysim_rand_points) + ' -xdim {x} -ydim 2'
-        # Note for xdim/ydim: order of states in SpaceEx file: 0 = tau, 1 = t, 2...2+n-1 = x_p_1...n, ..., random_state_1 ... _(m+p)
-        e = hypy.Engine('pysim', pysim_options.format(x=1))
+        pysim_options = '-star True -corners {corners} -rand {rand}'.format(corners=pysim_initstate_corners, rand=pysim_rand_points) + ' -xdim {x} -ydim {y}'
+        # order of states in SpaceEx file:
+        if not self.s.continuize:
+            #normally: 0 = tau, 1 = t, 2...2+n-1 = x_p_1...n, ..., random_state_1 ... _(m+p)
+            idx_t = 1
+            idx_xp1 = 2
+        else:
+            # continuized:  xp x_c_tilde delta_p delta_c t
+            idx_xp1 = 0
+            idx_t = 2 * (self.s.n_p + self.s.n_d)
+        idx_xd1 = idx_xp1 + self.s.n_p
+        e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1))
         e.set_input(model_file_pysim)
         e.set_output(outdir + name + "_pysim.py")
         res = e.run(parse_output=True, image_path = model_file_pysim + "_pysim_plot_xp1_over_t.png")
         self.results['pysim_hypy'] = res
-        assert res['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+        assert res['code'] == hypy.Engine.SUCCESS, "running pysim failed:" + repr(res)
         #PrettyPrinter(depth=3).pprint(res)
         pysim_state_bounds = res['output']['interval_bounds']
         #print("PySim min/max states, including simulation-internal states (global time, random number)")
         #print(pysim_state_bounds)
-        print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}, u_{1...m}, y_{1...p})")
-        pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d + self.s.m + self.s.p)), :]
+        if self.s.continuize:
+            assert self.s.immediate_ctrl
+            print("PySim min/max states (x_p_{1...n_p}, x_d_{1...n_d}, delta_p, delta_c, t")
+        elif self.s.immediate_ctrl:
+            print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}")
+            pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d)), :]
+        else:
+            print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}, u_{1...m}, y_{1...p})")
+            pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d + self.s.m + self.s.p)), :]
         self.results['pysim_state_bounds'] = pysim_state_bounds
         print(pysim_state_bounds)
 
-        # PySim: plot over tau
-        e = hypy.Engine('pysim', pysim_options.format(x=0))
-        e.set_input(model_file_pysim)
-        assert e.run(image_path = model_file_pysim + "_pysim_plot_xp1_over_tau.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+        if extra_plots and not self.s.continuize:
+            # PySim: plot over tau
+            e = hypy.Engine('pysim', pysim_options.format(x=0, y=2))
+            e.set_input(model_file_pysim)
+            assert e.run(image_path = model_file_pysim + "_pysim_plot_xp1_over_tau.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+
+        if extra_plots:
+            # Pysim: plot all states over t
+            # note that xp1 was already plotted earlier.
+            # xp2 ... xpN
+            for i in range(1, self.s.n_p):
+                e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1 + i))
+                e.set_input(model_file_pysim)
+                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xp{i+1}_over_t.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+            # xd1 ... xdN
+            for i in range(0, self.s.n_d):
+                e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xd1 + i))
+                e.set_input(model_file_pysim)
+                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xd{i+1}_over_t.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
 
         # SpaceEx: interval bounds
         e = hypy.Engine('spaceex', '-output-format INTV -output_vars *')
         e.set_input(model_file) # sets input model path
-        res = e.run(parse_output=True, timeout=10 if "--fast" in sys.argv else 7200)
+        res = e.run(parse_output=True, timeout=10 if "--fast" in sys.argv else self.s.spaceex_timeout)
         self.results['spaceex_hypy'] = res
         print("Result: {} after {} s".format(res['code'], res['time']))
-        def spaceex_bounds_to_array(res):
-            variables = res['output']['variables']
-            return np.block([[minmax[0], minmax[1]] for minmax in variables.values()])
         #PrettyPrinter().pprint(res)
         if res['code'] == 'Timeout (Tool)':
             self.results['stability_spaceex'] = 'timeout'
@@ -169,21 +220,26 @@ class HybridSysControlLoop(object):
             #res_print['tool_stdout']='<omitted>'
             #res_print['stdout']='<omitted>'
             #PrettyPrinter().pprint(res_print)
+            spaceex_state_bounds = spaceex_bounds_to_array(res['output']['variables'])
             found_fixpoint = res['output']['fixpoint']
             fixpoint_warning = "(incomplete result because no fixpoint was found)" if not found_fixpoint else ""
-            print("SpaceEx min/max state bounds " + fixpoint_warning)
-            spaceex_state_bounds = spaceex_bounds_to_array(res)
+            inf_warning = "\n (note that +inf/-inf is shown for bounded disturbance variables due to technical reasons)" if (self.s.continuize and np.any(np.isinf(spaceex_state_bounds))) else ""
+            print("SpaceEx min/max state bounds " + fixpoint_warning + inf_warning)
+
             print(spaceex_state_bounds)
-            print("K-factor (by which factor must box(simulation) be scaled to be a superset of box(analysis)? 1 = optimal, >1 = analaysis is probably pessimistic)")
-            def kFactor(analysis_bounds, simulation_bounds):
-                return np.max(np.max(np.abs(analysis_bounds),axis=1) / np.max(np.abs(simulation_bounds),axis=1))
-            k = kFactor(spaceex_state_bounds, pysim_state_bounds)
-            print("{} {}".format(k, fixpoint_warning))
+            if self.s.continuize:
+                k = float('nan')
+            else:
+                print("K-factor (by which factor must box(simulation) be scaled to be a superset of box(analysis)? 1 = optimal, >1 = analaysis is probably pessimistic)")
+                def kFactor(analysis_bounds, simulation_bounds):
+                    return np.max(np.max(np.abs(analysis_bounds),axis=1) / np.max(np.abs(simulation_bounds),axis=1))
+                k = kFactor(spaceex_state_bounds, pysim_state_bounds)
+                print("{} {}".format(k, fixpoint_warning))
             if found_fixpoint:
                 # a fixpoint was found: System is practically stable (neglecting floating point inaccuracy)
                 # and the state is within the computed bounds.
                 self.results['stability_spaceex'] = 'stable'
-                print("Stable (SpaceEx found fixpoint -- the above results are strict bounds)")
+                print("Stable (SpaceEx found fixpoint -- the above results are strict bounds" + (" if the assumed disturbance interval is correct " if self.s.continuize else "") + ")")
                 self.results['k'] = k
                 self.results['spaceex_pessimistic_state_bounds'] = spaceex_state_bounds
             else:
@@ -194,15 +250,109 @@ class HybridSysControlLoop(object):
                 else:
                     print("Unknown (SpaceEx did not find fixpoint within given number of iterations -- the above results are no strict bounds!)")
                     self.results['stability_spaceex'] = 'unknown, max iterations reached'
-            # SpaceEx: plot over tau
-            # hypy doesn't support multiple output formats, so we need to rerun SpaceEx.
-            e = hypy.Engine('spaceex', '-output-format GEN -output_vars tau,x_p_1')
-            e.set_input(model_file)
-            assert e.run(image_path = model_file + "__spaceex_plot_xp1_over_tau.png")['code'] == hypy.Engine.SUCCESS, "SpaceEx failed to generate plot"
+            if extra_plots and not self.s.continuize:
+                # SpaceEx: plot over tau
+                # hypy doesn't support multiple output formats, so we need to rerun SpaceEx.
+                e = hypy.Engine('spaceex', '-output-format GEN -output_vars tau,x_p_1')
+                e.set_input(model_file)
+                assert e.run(image_path = model_file + "__spaceex_plot_xp1_over_tau.png")['code'] == hypy.Engine.SUCCESS, "SpaceEx failed to generate plot"
 
-            # SpaceEx: plot over global time
-            e = hypy.Engine('spaceex', '-output-format GEN -output_vars t,x_p_1')
-            e.set_input(model_file_global_time)
-            assert e.run(image_path = model_file_global_time + "__spaceex_plot_xp1_over_t.png")['code'] == hypy.Engine.SUCCESS, "SpaceEx failed to generate plot"
+            if extra_plots:
+                # SpaceEx: plot over global time
+                e = hypy.Engine('spaceex', '-output-format GEN -output_vars t,x_p_1')
+                e.set_input(model_file_global_time)
+                assert e.run(image_path = model_file_global_time + "__spaceex_plot_xp1_over_t.png")['code'] == hypy.Engine.SUCCESS, "SpaceEx failed to generate plot"
 
-            # Flowstar: plot over global time
+    def run_analysis_continuized(self, name, outdir):
+        """
+        Run Analysis with Continuization
+        see run_analysis()
+
+        WARNING: this will modify parameters in self.s (TODO fix that)
+        """
+        print("")
+        print("====================")
+        print("Analysing System with Continuization: " + name)
+        assert self.s.immediate_ctrl
+        # FIXME: this will modify self.s (which is okay for how this function currently used, but may be annoying in the future)
+        self.s.continuize = True
+
+        # compute continuized dynamics
+        self.s.A_continuized_p_p = self.s.A_p + self.s.B_p @ self.s.B_d
+        self.s.A_continuized_p_c_tilde = self.s.B_p @ self.s.A_d
+        self.s.A_continuized_p_delta_p = self.s.B_p @ self.s.B_d
+        self.s.A_continuized_p_delta_c = self.s.A_continuized_p_c_tilde
+        self.s.A_continuized_c_tilde_p = 1/self.s.T * self.s.B_d
+        self.s.A_continuized_c_tilde_c_tilde = 1/self.s.T * (self.s.A_d - np.eye(self.s.n_d))
+        self.s.A_continuized_c_tilde_delta_p = self.s.A_continuized_c_tilde_p
+        self.s.A_continuized_c_tilde_delta_c = self.s.A_continuized_c_tilde_c_tilde
+
+        # build block matrices
+        # d/dt ([x_p; x_c_tilde]) = A_continuized_total @ [x_p; x_c_tilde] + B_continuized_total @ [delta_p; delta_c]
+        self.s.A_continuized_total = \
+            np.block([[self.s.A_continuized_p_p, self.s.A_continuized_p_c_tilde],
+                      [self.s.A_continuized_c_tilde_p, self.s.A_continuized_c_tilde_c_tilde]])
+        self.s.B_continuized_total = \
+            np.block([[self.s.A_continuized_p_delta_p, self.s.A_continuized_p_delta_c],
+                      [self.s.A_continuized_c_tilde_delta_p, self.s.A_continuized_c_tilde_delta_c]])
+        print("Eigenvalues of continuized system without delta:")
+        print(scipy.linalg.eig(self.s.A_continuized_total)[0])
+
+
+        self.s.spaceex_iterations = 1
+
+        # Note: SpaceEx uses unsound numerics (at least in the default settings).
+        # Epsilon here does not strictly guarantee soundness from a mathematical point of view (although it makes engineers sleep well).
+        eps = iv.mpf([-1e-10, 1e-10])
+        # \underline{\Delta}
+        delta_pc_assumed_without_eps = IntervalMatrix.zeros(self.s.n_p + self.s.n_d, 1)
+        i = 0
+        final_run = False
+        while True:
+            i += 1
+            print(f"\n\n\n# Iteration {i}")
+            if final_run:
+                print("(Final run - bound was already proven, now we generate all the plots and results)")
+            # run analysis
+            # NOTE: self.results now refers to continuized results
+            # \Delta = \underline{\Delta} + B_\epsilon   (overapproximated as interval)
+            delta_pc_assumed = delta_pc_assumed_without_eps + eps
+            print("assumed bound for delta_p, delta_c:")
+            print(delta_pc_assumed)
+            self.s.delta_p_assumed = delta_pc_assumed[0:self.s.n_p]
+            self.s.delta_c_assumed = delta_pc_assumed[self.s.n_p:(self.s.n_p + self.s.n_d)]
+            self.run_analysis(name, outdir, extra_plots=final_run, print_header=False)
+            if self.results['spaceex_hypy']['code'] != hypy.Engine.SUCCESS:
+                print("SpaceEx failed. Giving up.")
+                self.results['continuization'] = 'fail (SpaceEx errored)'
+                return
+
+            # compute delta-bounds
+            x_pc_intv = IntervalMatrix.from_bounds(lower_upper=spaceex_bounds_to_array(self.results['spaceex_hypy']['output']['variables'])[0:self.s.n_p + self.s.n_d])
+            delta_pc_actual = iv.mpf([0, 1]) * self.s.T * (-1) * (IntervalMatrix.convert(self.s.A_continuized_total) @ (x_pc_intv + eps) + IntervalMatrix.convert(self.s.B_continuized_total) @ delta_pc_assumed)
+            print("resulting actual bound for delta_p, delta_c:")
+            print(delta_pc_actual)
+            # check delta-bounds
+
+            if final_run:
+                # this was the last run - see below for conditions
+                assert all([(delta_pc_actual[i]) in delta_pc_assumed_without_eps[i] for i in range(len(delta_pc_assumed))])
+                print("successfully analyzed")
+                self.results['continuization'] = 'success'
+                return
+            elif all([(delta_pc_actual[i]) in delta_pc_assumed_without_eps[i] for i in range(len(delta_pc_assumed))]):
+                print("assumed interval is correct. Done. Re-running analysis with final bounds.")
+                delta_pc_assumed_without_eps = delta_pc_actual
+                final_run = True
+            elif i < 5:
+                print("assumed interval for delta_p and/or delta_c is to small. Enlarging.")
+                delta_pc_assumed_without_eps = delta_pc_actual * iv.mpf([0, 2])
+            else:
+                print("Iteration did not converge. System is possibly unstable or otherwise unsuitable for Continuization.")
+                self.results['continuization'] = 'fail (no convergence)'
+                return
+
+
+
+
+
