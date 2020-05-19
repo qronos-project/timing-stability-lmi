@@ -9,7 +9,8 @@ This is the code for the following publications:
    The original code corresponding to that publication was published on https://github.com/qronos-project/arch19-benchmark-iotiming . It has been merged into this codebase.
 
 - "Analysis of Real-Time Control Systems using First-Order Continuization" (Gaukler, 2020, under review)
-  
+  Examples C3-C5 are in src/qronos/reachability/experiments/continuization.py, see below on how to run.
+  Examples F1 and F2 are given as MATLAB/Simulink model in notes/continuization-counterexample-f1-f2/. Just start the provided MATLAB script.
 
 # Running with docker (recommended)
 

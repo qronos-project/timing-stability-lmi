@@ -6,3 +6,5 @@ logfile.txt
 src/python_coverage
 .coverage
 .coverage.*
+slprj/
+
