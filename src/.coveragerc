@@ -10,7 +10,7 @@ concurrency = threading
 
 [report]
 # source = ./  # <-- not yet supported in python-coverage 4.5?
-omit = /usr/local/*,/tmp/*,/usr/lib/*
+omit = /usr/local/*,/tmp/*,/usr/lib/*,*/mpmath/*
 # ignore_errors = True
 exclude_lines =
     if __name__ == .__main__.:
