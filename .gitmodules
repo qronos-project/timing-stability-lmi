@@ -4,3 +4,6 @@
 [submodule "mpmath"]
 	path = mpmath
 	url = https://github.com/MaxGaukler/mpmath
+[submodule "git-archive-all"]
+	path = git-archive-all
+	url = https://github.com/MaxGaukler/git-archive-all.sh.git/
