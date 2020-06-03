@@ -47,7 +47,7 @@ class Tests(unittest.TestCase):
 
     def test_Ak_delta_to_nominal(self):
         """
-        Test that Ak_delta_to_nominal_approx returns identical results for the two available methods of computation.
+        Test that Ak_delta_to_nominal returns identical results for the two available methods of computation.
 
         This validates the "Decomposition" theorem in [arXiv:1911.02537], which is used only for one of the methods.
         """

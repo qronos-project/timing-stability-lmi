@@ -69,7 +69,7 @@ def analyze(s, datatype=None):
     for (dtu, dty) in dtu_dty_combinations:
         if all(dtu==0) and all(dty==0):
             continue
-        Delta_list.append(l.Ak_delta_to_nominal_approx(dtu, dty))
+        Delta_list.append(l.Ak_delta_to_nominal(dtu, dty, datatype=np))
 
 
     print("")

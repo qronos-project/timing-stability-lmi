@@ -8,7 +8,6 @@ import numpy as np
 import mpmath as mp
 from .generic_matrix import check_datatype, AbstractMatrix
 from repoze.lru import lru_cache
-from deprecation import deprecated
 
 class LISControlLoop(object):
     """
@@ -174,10 +173,6 @@ class LISControlLoop(object):
                 margin = (rho_total - rho_nominal) / (1 - rho_nominal)
             print(f'total:\nsum(P_norm...) = {rho_total}, ({margin*100:.1f}% of stability reserve used by timing)')
         return (rho_total, rho_nominal)
-
-    @deprecated()
-    def Ak_delta_to_nominal_approx(self, dtu, dty, method=None, datatype=None):
-        return self.Ak_delta_to_nominal(dtu=dtu, dty=dty, method=method, datatype=np)
 
     def Ak_delta_to_nominal(self, dtu=None, dty=None, method=None, datatype=None, skip_u=None, skip_y=None, skip_ctrl=False):
         '''
