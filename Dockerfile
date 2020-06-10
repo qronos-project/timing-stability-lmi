@@ -38,5 +38,6 @@ ARG CONTAINER_GID=1000
 RUN echo "Using CONTAINER_UID=$CONTAINER_UID and CONTAINER_GID=$CONTAINER_GID"
 RUN addgroup user --gid $CONTAINER_GID
 RUN adduser --gecos "" --disabled-password --uid $CONTAINER_UID --gid $CONTAINER_GID user
+RUN chown $CONTAINER_UID -R /hyst
 USER user
 CMD jupyter-notebook --ip=0.0.0.0 --port=8888  2>&1 | sed s/0.0.0.0/localhost/

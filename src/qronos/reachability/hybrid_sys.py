@@ -132,7 +132,7 @@ class HybridSysControlLoop(object):
         pysim_initstate_corners = True
         if (self.s.n_p + self.s.n_d + self.s.m + self.s.p) > 8 or '--fast' in sys.argv:
             pysim_initstate_corners = False
-        pysim_options = '-star True -corners {corners} -rand {rand}'.format(corners=pysim_initstate_corners, rand=pysim_rand_points) + ' -xdim {x} -ydim {y}'
+        pysim_options = '-legend False -title " " -star True -corners {corners} -rand {rand}'.format(corners=pysim_initstate_corners, rand=pysim_rand_points) + ' -xdim {x} -ydim {y}'
         # order of states in SpaceEx file:
         if not self.s.continuize:
             #normally: 0 = tau, 1 = t, 2...2+n-1 = x_p_1...n, ..., random_state_1 ... _(m+p)
@@ -146,7 +146,10 @@ class HybridSysControlLoop(object):
         e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1))
         e.set_input(model_file_pysim)
         e.set_output(outdir + name + "_pysim.py")
-        res = e.run(parse_output=True, image_path = model_file_pysim + "_pysim_plot_xp1_over_t.png")
+        xlim = [0, (self.s.spaceex_iterations_for_global_time or self.s.spaceex_iterations) * self.s.T]
+        ylim_xp = [(self.s.plot_ylim_xp[i] if self.s.plot_ylim_xp else None) for i in range(self.s.n_p)]
+        ylim_xd = [(self.s.plot_ylim_xd[i] if self.s.plot_ylim_xd else None) for i in range(self.s.n_d)]
+        res = e.run(parse_output=True, image_path = model_file_pysim + "_pysim_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0])
         self.results['pysim_hypy'] = res
         assert res['code'] == hypy.Engine.SUCCESS, "running pysim failed:" + repr(res)
         #PrettyPrinter(depth=3).pprint(res)
@@ -178,12 +181,12 @@ class HybridSysControlLoop(object):
             for i in range(1, self.s.n_p):
                 e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1 + i))
                 e.set_input(model_file_pysim)
-                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xp{i+1}_over_t.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xp{i+1}_over_t.png", xlim=xlim, ylim=ylim_xp[i])['code'] == hypy.Engine.SUCCESS, "running pysim failed"
             # xd1 ... xdN
             for i in range(0, self.s.n_d):
                 e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xd1 + i))
                 e.set_input(model_file_pysim)
-                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xd{i+1}_over_t.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xd{i+1}_over_t.png", xlim=xlim, ylim=ylim_xd[i])['code'] == hypy.Engine.SUCCESS, "running pysim failed"
 
         # SpaceEx: interval bounds
         e = hypy.Engine('spaceex', '-output-format INTV -output_vars *')
@@ -261,7 +264,7 @@ class HybridSysControlLoop(object):
                 # SpaceEx: plot over global time
                 e = hypy.Engine('spaceex', '-output-format GEN -output_vars t,x_p_1')
                 e.set_input(model_file_global_time)
-                assert e.run(image_path = model_file_global_time + "__spaceex_plot_xp1_over_t.png")['code'] == hypy.Engine.SUCCESS, "SpaceEx failed to generate plot"
+                assert e.run(image_path = model_file_global_time + "__spaceex_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0])['code'] == hypy.Engine.SUCCESS, "SpaceEx failed to generate plot"
 
     def run_analysis_continuized(self, name, outdir):
         """

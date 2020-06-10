@@ -70,6 +70,8 @@ def example_C4_with_continuous_P_and_discrete_I():
     system.spaceex_iterations_for_global_time = system.spaceex_time_horizon_periods
     system.spaceex_timeout = 0.0001* 3600 * 10
     system.enable_immediate_ctrl()
+    system.plot_ylim_xp = [[-1.5, 1.5]]
+    system.plot_ylim_xd = [[-0.035, 0.035]]
     return system
 
 def example_C5_with_lowpass_PI():
@@ -115,6 +117,8 @@ def example_C5_with_lowpass_PI():
     system.spaceex_iterations_for_global_time = system.spaceex_time_horizon_periods
     system.spaceex_timeout = 3600 * 10
     system.enable_immediate_ctrl()
+    system.plot_ylim_xp = [[-1.5, 1.5]]
+    system.plot_ylim_xd = [[-0.035, 0.035], [-1, 1]]
     return system
 
 def main(argv):
