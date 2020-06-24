@@ -38,3 +38,15 @@ omega_dot = 0
 open('continuization_model')
 sim('continuization_model')
 
+% save Simulink logs as CSV
+decimation = 100; % plot every n-th point
+values=[];
+names={'time'};
+for i=1:logsout.numElements
+    el = logsout.getElement(i);
+    names{i+1} = el.Name;
+    values(1,:) = el.Values.Time(1:decimation:end);
+    values(i+1,:) = el.Values.Data(1:decimation:end);
+end
+T = array2table(values', 'VariableNames', names);
+writetable(T, "plotdata-example-" + string(example) + ".csv")
