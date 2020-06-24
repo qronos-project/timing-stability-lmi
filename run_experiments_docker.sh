@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-test -f hyst/Dockerfile || { echo "The hyst submodule is missing, or you are not in the right directory"; exit 1; }
+
+cd "$(dirname "$0")"
+. common.sh
 
 echo "This script runs the experiments and prints the log and the LaTeX table of results."
 echo "All output is also saved to ./logfile.txt"

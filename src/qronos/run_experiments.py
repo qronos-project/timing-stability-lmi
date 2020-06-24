@@ -7,6 +7,7 @@ Run all experiments
 import time
 import sys
 import qronos.reachability.experiments.arch19
+import qronos.reachability.experiments.continuization
 import qronos.lis.experiments.timing_stability_ifac20
 # Interface for the experiment modules:
 # - main(argv) runs the experiments, usually main(sys.argv[1:]).
@@ -14,6 +15,7 @@ import qronos.lis.experiments.timing_stability_ifac20
 EXPERIMENTS = {
         'ifac20': qronos.lis.experiments.timing_stability_ifac20,
         'arch19': qronos.reachability.experiments.arch19,
+        'cont': qronos.reachability.experiments.continuization,
         }
 
 def print_help():

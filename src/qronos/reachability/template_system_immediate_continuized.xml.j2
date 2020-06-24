@@ -1,0 +1,73 @@
+{{- assert(sys.continuize and sys.immediate_ctrl, "Continuization only supported for immediate_ctrl mode") -}}
+<?xml version="1.0" encoding="iso-8859-1"?>
+<sspaceex xmlns="http://www-verimag.imag.fr/xml-namespaces/sspaceex" version="0.2" math="SpaceEx">
+  <component id="system">
+    {% for i in range(1, sys.n_p+1) %}
+        <param name="x_p_{{i}}" type="real" local="false" d1="1" d2="1" dynamics="any" controlled="true" />
+    {% endfor %}
+    {% for i in range(1, sys.n_d+1) %}
+        <param name="x_c_tilde_{{i}}" type="real" local="false" d1="1" d2="1" dynamics="any" controlled="true" />
+    {% endfor %}
+    {% for i in range(1, sys.n_p+1) %}
+        <param name="delta_p_{{i}}" type="real" local="false" d1="1" d2="1" dynamics="any" controlled="false" />
+    {% endfor %}
+    {% for i in range(1, sys.n_d+1) %}
+        <param name="delta_c_{{i}}" type="real" local="false" d1="1" d2="1" dynamics="any" controlled="false" />
+    {% endfor %}
+    {%- if sys.global_time -%}
+        <param name="t" type="real" local="false" d1="1" d2="1" dynamics="any" controlled="true" />
+    {% endif %}
+    <location id="1" name="always" x="337.0" y="143.0" width="220.0" height="98.0">
+    <flow>
+    {% for i in range(1, sys.n_p + 1) -%}
+        x_p_{{i}}' ==
+        {%- for j in range(1, sys.n_p + 1) -%}
+            {{ sys.A_continuized_p_p[i-1, j-1] }} * x_p_{{j}} +
+            {{ sys.A_continuized_p_delta_p[i-1, j-1] }}  * delta_p_{{j}} +
+        {%- endfor -%}
+        {%- for j in range(1, sys.n_d + 1) -%}
+            {{ sys.A_continuized_p_c_tilde[i-1, j-1] }}  * x_c_tilde_{{j}} +
+            {{ sys.A_continuized_p_delta_c[i-1, j-1] }} * delta_c_{{j}} +
+        {%- endfor -%}
+        0
+        &amp;&amp;
+    {% endfor %}
+    {% for i in range(1, sys.n_d + 1) -%}
+        x_c_tilde_{{i}}' ==
+        {%- for j in range(1, sys.n_p + 1) -%}
+            {{ sys.A_continuized_c_tilde_p[i-1, j-1] }} * x_p_{{j}} +
+            {{ sys.A_continuized_c_tilde_delta_p[i-1, j-1] }} * delta_p_{{j}} +
+        {%- endfor -%}
+        {%- for j in range(1, sys.n_d + 1) -%}
+            {{ sys.A_continuized_c_tilde_c_tilde[i-1, j-1] }} * x_c_tilde_{{j}} +
+            {{ sys.A_continuized_c_tilde_delta_c[i-1, j-1] }} * delta_c_{{j}} +
+        {%- endfor -%}
+        0
+        {%- if not loop.last -%}
+            &amp;&amp;
+        {% endif %}
+    {% endfor %}
+    {%- if sys.global_time -%}
+        &amp;&amp; t' == 1
+    {% endif %}
+    </flow>
+    <invariant>
+    {% for i in range(1, sys.n_p + 1) -%}
+        delta_p_{{i}} &gt;= {{ float(sys.delta_p_assumed[i-1].a) }}
+        &amp;&amp;
+        delta_p_{{i}} &lt;= {{ float(sys.delta_p_assumed[i-1].b) }}
+        &amp;&amp;
+    {% endfor %}
+    {% for i in range(1, sys.n_d + 1) -%}
+        delta_c_{{i}} &gt;= {{ float(sys.delta_c_assumed[i-1].a) }}
+        &amp;&amp;
+        delta_c_{{i}} &lt;= {{ float(sys.delta_c_assumed[i-1].b) }}
+        {%- if not loop.last -%}
+            &amp;&amp;
+        {% endif %}
+    {% endfor %}
+    </invariant>
+    </location>
+  </component>
+</sspaceex>
+

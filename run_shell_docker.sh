@@ -5,6 +5,8 @@ echo "The ./src directory is available in the container at /src."
 echo "Run with '--no-cache' if something fails"
 echo "Try: python3 -m qronos.run_experiments"
 
+cd "$(dirname "$0")"
+. common.sh
 
 # Run container as current user, except if CONTAINER_UID is given.
 export CONTAINER_UID=${CONTAINER_UID:-$UID}

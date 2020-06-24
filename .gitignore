@@ -7,3 +7,6 @@ src/python_coverage
 .coverage
 .coverage.*
 source-complete.tar.gz
+slprj/
+*.slxc
+

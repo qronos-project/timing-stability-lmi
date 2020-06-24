@@ -18,3 +18,4 @@ services:
      - "8888:8888"
     volumes:
      - ./src:/src
+     - ./hyst/src/hybridpy:/hyst/src/hybridpy
