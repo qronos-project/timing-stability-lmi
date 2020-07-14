@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
+
+from typing import Optional
+
 """
 Stability analysis based on Linear Impulsive Systems and Linear Matrix Inequalities.
 See Gaukler et al. (2019/2020): Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing. IFAC 2020 / https://arxiv.org/abs/1911.02537
@@ -39,7 +42,8 @@ def analyze(s, datatype=None):
     print("")
     print("Analyzing system: {}".format(s))
     print("Analysis is exact (interval arithmetic): {}".format(datatype == iv))
-    print("Please note that some of the above parameters, eg. spaceex_... are not used in this LMI-based analysis, they are only present for reachability analysis.")
+    print("Please note that some of the above parameters, eg. spaceex_... are not used in this LMI-based analysis, "
+          "they are only present for reachability analysis.")
     # TODO: move the spaceex_... parameters to some sub-structure, e.g. sys.param.reach.XXX
     time_start = datetime.now()
     l = LISControlLoop(s, datatype)
@@ -79,7 +83,8 @@ def analyze(s, datatype=None):
     num_iterations = 3
     for iterations in range(num_iterations):
         print("Iteration {} of {}: ".format(iterations, num_iterations) + "delta={}, ".format(delta) + "beta={}".format(beta))
-        P_sqrt_T, gamma = lmi_cqlf.cqlf(A=l.Ak_nominal, Delta_list=Delta_list, rho=rho, beta=1/beta, R_inv='auto' if precondition else None)
+        P_sqrt_T, gamma = lmi_cqlf.cqlf(A=l.Ak_nominal, Delta_list=Delta_list, rho=rho, beta=1/beta,
+                                        R_inv='auto' if precondition else None)
         print("Solving CQLF for beta=", beta, " resulted in robustness gamma=", gamma)
         P_sqrt_T = numpy_ndarray_to_mp_matrix(P_sqrt_T)
         print("first approximation:")
@@ -127,16 +132,24 @@ def analyze(s, datatype=None):
 
     return result
 
-def analyze_cqlf_timing_range(system, datatype=None, P_sqrt_T=None, num_points=150):
+
+def analyze_cqlf_timing_range(system, datatype=None, P_sqrt_T=None, num_points: int = 150, max_scale: Optional[float] = None, verbose: bool = True):
     """
     How does rho scale if the timing is changed but P stays constant?
 
-    @param DigitalControlLoop system
-    @param datatype: see analyze() (optional)
-    @param P_sqrt_T: CQLF-matrix determined by analyze() (optional)
-    @param num_points: discretization steps (higher value means less pessimism)
+    @param DigitalControlLoop: system
 
-    returns (scaling_list, rho_list, offset, slope),
+    @param datatype: see analyze() (optional)
+
+    @param P_sqrt_T: CQLF-matrix determined by analyze() (optional)
+
+    @param num_points: discretization steps (higher value means less pessimism, min. 3)
+
+    @param max_scale: maximum timing (relative to timing uncertainty in given system). Default: scale up until +- T/2 is reached
+
+    @param verbose: print debug information
+
+    @return: (scaling_list, rho_list, offset, slope),
          where scaling_list[i] is the factor by which the timing was scaled (0: perfect timing, 2: twice as much as given in the system model, ...)
          and rho_list[i] the corresponding rho.
 
@@ -156,20 +169,28 @@ def analyze_cqlf_timing_range(system, datatype=None, P_sqrt_T=None, num_points=1
         and all(system.delta_t_y_min <= 0) and all(system.delta_t_y_max >= 0), \
         "delta t=0 must be included in the timing intervals"
     max_abs_timing = max(abs(np.hstack((system.delta_t_u_max, system.delta_t_u_min, system.delta_t_y_max, system.delta_t_y_min))))
-    print(max_abs_timing)
+    if verbose:
+        print(f"max. abs. nominal timing: {max_abs_timing}")
+    assert(num_points >= 3)
     rho_list = np.zeros(num_points)
-    scaling_list = np.zeros(num_points)
+    if max_scale is None:
+        max_scale = system.T / 2 / max_abs_timing
+    scaling_list = np.linspace(0, max_scale, num=num_points)
     i = 0
-    for scaling in np.linspace(0, system.T/2/max_abs_timing, num=num_points):
+    for scaling in scaling_list:
         rho_total, rho_nominal=l.rho_total(P_sqrt_T=P_sqrt_T, scale_delta_t=scaling, datatype=datatype)
-        print(scaling, rho_total, (rho_total-rho_nominal)/scaling if scaling != 0 else float('NaN'))
-        scaling_list[i] = scaling
+        if verbose:
+            print(scaling, rho_total, (rho_total-rho_nominal)/scaling if scaling != 0 else float('NaN'))
         rho_list[i] = rho_total
         i = i + 1
     offset = rho_list[1]
-    slope = np.max(np.diff(rho_list)) / np.min(np.diff(scaling_list))
-    print(f"rho(scale) <= offset + slope * scale, where offset={offset}, slope={slope}")
-    return (rho_list, scaling_list, offset, slope)
+    # simpler variant would be: slope = np.max(np.diff(rho_list)) / np.min(np.diff(scaling_list))
+    # Lemma: "Linear Upper Approximation of Nondecreasing Function"
+    slope: float = np.max((rho_list[2:] - rho_list[1]) / scaling_list[1:-1])
+    if verbose:
+        print(f"rho(scale) <= offset + slope * scale, where offset={offset}, slope={slope}")
+    return rho_list, scaling_list, offset, slope
+
 
 def analyze_cqlf_skip(system, P_sqrt_T=None):
     """
@@ -181,6 +202,7 @@ def analyze_cqlf_skip(system, P_sqrt_T=None):
     lis = LISControlLoop(system, np)
     if P_sqrt_T is None:
         P_sqrt_T = analyze(system)['P_sqrt_T']
+
     def boolean_vectors(length):
         return itertools.product([True, False], repeat=length)
 

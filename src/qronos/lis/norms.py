@@ -15,6 +15,7 @@ import math
 import random
 from .memoize_simple import matrix_memoize_simple
 
+
 from .iv_matrix_utils import iv_matrix_mid_to_numpy_ndarray, numpy_ndarray_to_mp_matrix, iv_matrix_to_numpy_ndarray, iv_matrix_mid_as_mp, iv_matrix_inv
 
 

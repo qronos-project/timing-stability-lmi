@@ -9,4 +9,4 @@ src/python_coverage
 source-complete.tar.gz
 slprj/
 *.slxc
-
+*.orig

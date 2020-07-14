@@ -18,25 +18,23 @@ def analyze_examples(argv):
     Gaukler et al. (IFAC 2020).
     """
     problems = {}
-
-
     s = examples.example_C_quadrotor_attitude_one_axis()
     problems['C2'] = s
-
+    
     if "--fast" not in argv:
         s = examples.example_D_quadrotor_attitude_three_axis()
         problems['D2'] = s
-
+    
         # Example d2, timing*2
         s = examples.example_D_quadrotor_attitude_three_axis()
         s.increase_timing(2)
         problems[r'D2\textsubscript{b}: $2\Delta t$'] = s
-
+    
         # Example D2, dimension*2
         s = examples.example_D_quadrotor_attitude_three_axis()
         s.increase_dimension(2)
         problems[r'D2\textsubscript{c}: $2n$'] = s
-
+    
         # Example D2, dimension*2, dt_y_max=0.1*dt_y_max
         s = examples.example_D_quadrotor_attitude_three_axis()
         s.increase_dimension(2)

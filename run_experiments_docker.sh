@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+test -f hyst/Dockerfile || { echo "The hyst submodule is missing, or you are not in the right directory"; exit 1; }
 
 cd "$(dirname "$0")"
 . common.sh

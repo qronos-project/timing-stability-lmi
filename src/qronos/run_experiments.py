@@ -9,6 +9,7 @@ import sys
 import qronos.reachability.experiments.arch19
 import qronos.reachability.experiments.continuization
 import qronos.lis.experiments.timing_stability_ifac20
+import qronos.lis.experiments.abstraction_timing
 # Interface for the experiment modules:
 # - main(argv) runs the experiments, usually main(sys.argv[1:]).
 # - A description of each experiment is read from the module docstring.
@@ -16,6 +17,7 @@ EXPERIMENTS = {
         'ifac20': qronos.lis.experiments.timing_stability_ifac20,
         'arch19': qronos.reachability.experiments.arch19,
         'cont': qronos.reachability.experiments.continuization,
+        'abs': qronos.lis.experiments.abstraction_timing,
         }
 
 def print_help():

@@ -23,11 +23,11 @@ RUN apt-get -qy install gfortran libopenblas-dev liblapack-dev cmake
 ADD src/qronos/requirements* /
 # For reproducibility, fixed versions are installed (generated using pip3 freeze).
 # For development, uncomment the following line (newest versions) and comment out the one below (fixed versions):
-# RUN pip3 install -r /requirements.txt
+# RUN pip3 install -r /requirements.txt --upgrade --upgrade-strategy only-if-needed
 RUN pip3 install -r /requirements-frozen-py3.txt
 # Regenerate requirements-frozen-py3.txt by running `pip3 freeze -l > qronos/requirements-frozen-py3.txt` inside the container, *after it was built with the non-frozen requirements.txt*
 
-# Custom mpmath version until all changes are released upstream
+# Custom mpmath version until all changes are merged and released upstream
 ADD mpmath /mpmath
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=1.0.0 pip3 install -e /mpmath
 

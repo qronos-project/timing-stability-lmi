@@ -104,6 +104,20 @@ class AbstractMatrix(ABC):
         '''
         n x n unity matrix
         '''
+    
+    @classmethod
+    def ones(cls, a, b):
+        '''
+        a x b matrix full of ones
+        '''
+        return cls.zeros(a, b) + 1
+
+    @staticmethod
+    @abstractmethod
+    def inv(M):
+        '''
+        matrix inverse
+        '''
 
     @classmethod
     def ones(cls, a, b):
