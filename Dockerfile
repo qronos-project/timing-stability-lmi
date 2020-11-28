@@ -1,6 +1,10 @@
 FROM localhost/hyst_baseimage
 # to remove reachability-analysis-related dependencies, replace the above line with:
 # FROM ubuntu:18.04
+
+# Workaround to run reachability analysis on older CPUs: (SpaceEx ships with a buggy GMP lib that causes SIGILL errors on CPUs with certain subsets of AVX. Only seems to affect CPUs made before 2015.)
+RUN cp -sf /usr/lib/x86_64-linux-gnu/libgmp* /tools/spaceex/spaceex_exe/lib/
+
 ENV DEBIAN_FRONTEND=noninteractive
 RUN sed 's@archive.ubuntu.com@ftp.fau.de@' -i /etc/apt/sources.list
 RUN apt-get update && apt-get -qy install jupyter python3-pip python3-numpy python3-deprecation
