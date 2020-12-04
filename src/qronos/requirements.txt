@@ -4,7 +4,7 @@
 
 cvxopt
 cvxpy
-mpmath
+# mpmath <-- INSTALLED FROM LOCAL SUBDIR
 tikzplotlib
-# force older matplotlib to workaround tikzplotlib bug https://github.com/nschloe/tikzplotlib/issues/426
-matplotlib==3.2.0
+matplotlib >= 2.3
+jinja2

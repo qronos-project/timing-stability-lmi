@@ -28,7 +28,6 @@ git clone --recurse-submodules https://github.com/qronos-project/timing-stabilit
 ./run_experiments_docker.sh ifac20 # run IFAC 2020 experiments, write all results into logfile.txt; the table from the paper can be found at the very end.
 ./run_experiments_docker.sh cont # run ARCH 2020 Continuization experiments, write all results into logfile.txt; a summary (as LaTeX table) can be found at the very end, plots can be found in src/qronos/reachability/output_continuization
 ./run_experiments_docker.sh --help # compiles everything and then shows help on further options
-./run_webserver_docker.sh # Run a webserver with Jupyter Notebook for playing around interactively.
 ```
 
 If anything does not work or you have questions, please write an email or open an issue on GitHub.
