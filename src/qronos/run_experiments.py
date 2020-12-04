@@ -21,6 +21,9 @@ EXPERIMENTS = {
         }
 
 def print_help():
+    print("Usage: " + sys.argv[0] + " <experiment_name> [experiment_args ...]  # run specific experiment")
+    print("Usage: " + sys.argv[0] + "  # run all experiments")
+    print("Usage: " + sys.argv[0] + " ALL --fast # run all experiments, but only a small part to test that the code doesn't crash")
     print("NOTE: To run a specific experiments, please specifiy ONE of the following experiments as first commandline parameter: " + " ".join(EXPERIMENTS.keys()))
     print("NOTE: If no arguments are given, all experiments will be run.")
     print("NOTE: Some experiments support further commandline options -- specify the name of the experiment and then --help")
@@ -32,12 +35,18 @@ def print_help():
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
+        # no commandline arguments
         print("NOTE: No experiment has been specified. ALL experiments will be run, which may take quite long.")
         print_help()
         time.sleep(5)
         for exp in EXPERIMENTS.values():
             exp.main([])
+    elif sys.argv[1] == "ALL":
+        # run_experiments ALL [--fast]
+        for exp in EXPERIMENTS.values():
+            exp.main(sys.argv[2:])
     else:
+        # run_experiments <experiment_name> [experiment_args ...]
         if sys.argv[1] not in EXPERIMENTS.keys():
             print("Unknown experiment name " + repr(sys.argv[1]))
             print_help()
