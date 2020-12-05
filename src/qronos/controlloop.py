@@ -82,6 +82,9 @@ class DigitalControlLoop(object):
         # clustering percentage
         self.spaceex_clustering_percent=100
 
+        # Time-axis limit for plotting (None: auto)
+        self.plot_t_max = None
+        
         # Y-axis limits for plotting:
         # [[min_xp_0, max_xp_0], [min_xp_1, max_xp_1], ...]
         self.plot_ylim_xp = None

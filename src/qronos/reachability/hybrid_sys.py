@@ -146,7 +146,7 @@ class HybridSysControlLoop(object):
         e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1))
         e.set_input(model_file_pysim)
         e.set_output(outdir + name + "_pysim.py")
-        xlim = [0, (self.s.spaceex_iterations_for_global_time or self.s.spaceex_iterations) * self.s.T]
+        xlim = [0, self.s.plot_t_max or ((self.s.spaceex_iterations_for_global_time or self.s.spaceex_iterations) * self.s.T / (self.s.m + self.s.p))]
         ylim_xp = [(self.s.plot_ylim_xp[i] if self.s.plot_ylim_xp else None) for i in range(self.s.n_p)]
         ylim_xd = [(self.s.plot_ylim_xd[i] if self.s.plot_ylim_xd else None) for i in range(self.s.n_d)]
         res = e.run(parse_output=True, image_path = model_file_pysim + "_pysim_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0])
