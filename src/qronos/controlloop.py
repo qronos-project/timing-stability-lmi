@@ -139,6 +139,11 @@ class DigitalControlLoop(object):
         assert all(self.delta_t_u_max < self.T/2)
         assert all(self.x_p_0_max >= self.x_p_0_min)
 
+        for (lim, length) in [(self.plot_ylim_xp, self.n_p), (self.plot_ylim_xd, self.n_d)]:
+            if lim is not None:
+                assert isinstance(lim, list), "self.plot_ylim_xd and self.plot_ylim_xp must be lists or 'None'"
+                assert len(lim) == length, "self.plot_ylim_xd and self.plot_ylim_xp must be lists of length self.n_d and self.n_p"
+
     def __repr__(self):
         ret = "System("
         for (key,val) in sorted(self.__dict__.items()):
@@ -222,6 +227,15 @@ class DigitalControlLoop(object):
         self.delta_t_u_min = np.tile(self.delta_t_u_min, factor)
         self.delta_t_y_max = np.tile(self.delta_t_y_max, factor)
         self.delta_t_y_min = np.tile(self.delta_t_y_min, factor)
+        # Y-axis limits for plotting:
+        # [[min_xp_0, max_xp_0], [min_xp_1, max_xp_1], ...]
+        
+        if self.plot_ylim_xd:
+            assert isinstance(self.plot_ylim_xp, list)
+            self.plot_ylim_xp = self.plot_ylim_xd * factor
+        if self.plot_ylim_xd:
+            assert isinstance(self.plot_ylim_xp, list)
+            self.plot_ylim_xd = self.plot_ylim_xd * factor
         self._check_and_update_dimensions()
 
     def increase_timing(self, factor):

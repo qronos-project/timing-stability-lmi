@@ -36,8 +36,12 @@ def example_A1_stable_1():
     system.delta_t_y_max=np.array([0.002])
 
     system.spaceex_iterations=200
+    system.spaceex_iterations_for_global_time=500
     # with this setting, it also works in the SpaceEx "LGG scenario"
     system.spaceex_sampling_time=1e-3
+    system.plot_t_max = 7
+    system.plot_ylim_xp = [[-1.5, 1.5]]
+    system.plot_ylim_xd = [[-1.5, 1.5]]
     return system
 
 def example_A2_stable_1():
@@ -65,9 +69,9 @@ def example_A4_unknown_1():
     system.delta_t_u_max[0]=0.4
     # number of iterations:
     # 3600 -> K=1.3, no fixpoint
-    # 3670 ... 20000 -> crash (not desirable, because then the plots are not generated)
+    # 3670 ... 20000 -> crash
     # unfortunately, there is no usable number of iterations without crashing.
-    system.spaceex_iterations=3700
+    system.spaceex_iterations=3670
     system.spaceex_iterations_for_global_time=2000 # avoid crash when plotting over t
     return system
 
@@ -81,6 +85,7 @@ def example_A5_stable_diagonal(repetitions):
     system=example_A3_stable_1();
     system.increase_dimension(repetitions)
     system.spaceex_iterations=2000
+    system.spaceex_iterations_for_global_time=2000 # works for 2000 (but time axis only up to 3 seconds), crash for >= 4000
     return system
 
 
@@ -109,6 +114,8 @@ def example_B1_stable_3():
 
     # fails with spaceex_directions="oct". Unclear why.
     system.spaceex_directions="box"
+    
+    system.plot_t_max = 10
     return system
 
 def example_C_quadrotor_attitude_one_axis(perfect_timing=False):
@@ -151,6 +158,8 @@ def example_C_quadrotor_attitude_one_axis(perfect_timing=False):
     system.delta_t_u_max=-system.delta_t_u_min
     system.delta_t_y_min=system.delta_t_u_min
     system.delta_t_y_max=-system.delta_t_y_min
+    
+    system.plot_t_max = 7
     
     system.spaceex_iterations = 8500
     # for perfect timing, unfortunately, even at 1000 iterations the computation of the interval bounds runs into a timeout, although the iterations itself are very fast. So it seems impossible to find a number of iterations for which the computation finishes within two hours, but shows that K becomes very large
