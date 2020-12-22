@@ -159,9 +159,10 @@ def example_C_quadrotor_attitude_one_axis(perfect_timing=False):
     system.delta_t_y_min=system.delta_t_u_min
     system.delta_t_y_max=-system.delta_t_y_min
     
-    system.plot_t_max = 7
+    system.plot_t_max = 0.25
     
-    system.spaceex_iterations = 8500
+    system.plot_ylim_xp = [[-4, 4]]
+    system.spaceex_iterations = 300 if perfect_timing else 2000 # reduced to prevent extremely long (infinite?) plot computation time for perfect timing
     # for perfect timing, unfortunately, even at 1000 iterations the computation of the interval bounds runs into a timeout, although the iterations itself are very fast. So it seems impossible to find a number of iterations for which the computation finishes within two hours, but shows that K becomes very large
     # perfect_timing=False: 5000 -> K=21, 6000 -> K=25, 11000 -> crash
     return system

@@ -18,6 +18,11 @@ def analyze_examples(argv):
     Gaukler et al. (IFAC 2020).
     """
     problems = {}
+    
+    s = examples.example_A1_stable_1()
+    problems['A1'] = s
+    s = examples.example_A3_stable_1()
+    problems['A3'] = s
     s = examples.example_C_quadrotor_attitude_one_axis()
     problems['C2'] = s
     

@@ -27,10 +27,10 @@ def format_float_ceil(number, digits):
     >>> format_float_ceil(1.800001,1)
     '$1.9$'
     """
-    if math.isnan(number):
-        return str(number)
     if number is None:
         return '---'
+    if math.isnan(number):
+        return str(number)
     if number == float('inf'):
         return '$\infty$'
     if number == -float('inf'):

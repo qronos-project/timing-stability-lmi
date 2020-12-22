@@ -253,14 +253,14 @@ class HybridSysControlLoop(object):
                 else:
                     print("Unknown (SpaceEx did not find fixpoint within given number of iterations -- the above results are no strict bounds!)")
                     self.results['stability_spaceex'] = 'unknown, max iterations reached'
-        if extra_plots and not self.s.continuize:
-            # SpaceEx: plot over tau
-            # hypy doesn't support multiple output formats, so we need to rerun SpaceEx.
-            e = hypy.Engine('spaceex', '-output-format GEN -output_vars tau,x_p_1')
-            e.set_input(model_file)
-            plot_gen_status = e.run(image_path = model_file + "__spaceex_plot_xp1_over_tau.png")['code']
-            if plot_gen_status != hypy.Engine.SUCCESS:
-                print("Warning: SpaceEx failed to generate extra plot xp1 over tau")
+            if extra_plots and not self.s.continuize:
+                # SpaceEx: plot over tau
+                # hypy doesn't support multiple output formats, so we need to rerun SpaceEx.
+                e = hypy.Engine('spaceex', '-output-format GEN -output_vars tau,x_p_1')
+                e.set_input(model_file)
+                plot_gen_status = e.run(image_path = model_file + "__spaceex_plot_xp1_over_tau.png")['code']
+                if plot_gen_status != hypy.Engine.SUCCESS:
+                    print("Warning: SpaceEx failed to generate extra plot xp1 over tau")
                     
 
         if extra_plots:
