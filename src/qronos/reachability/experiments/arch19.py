@@ -34,13 +34,14 @@ def main(argv):
         sys.exit()
     if os.path.exists(output_dir()) and not "--load" in argv:
         shutil.rmtree(output_dir())
-    for directory in ["unsolved/unknown", "unsolved/unstable", "unsolved/stable", "solved_with_spaceex/stable"]:
+    for directory in ["unsolved/unknown", "unsolved/unstable", "unsolved/stable", "solved_with_spaceex/stable", "demo"]:
         directory = output_dir() + directory
         if not os.path.exists(directory):
             os.makedirs(directory)
     
     # Files are denoted with a unique prefix (e.g. A1) to simplify referencing them in publications
     systems={}
+
     systems['solved_with_spaceex/stable/A1_1']=examples.example_A1_stable_1()
     if not "--fast" in argv:
         systems['solved_with_spaceex/stable/A2_1']=examples.example_A2_stable_1()
@@ -54,6 +55,13 @@ def main(argv):
         systems['unsolved/unknown/D2_quadrotor_attitude_three_axis_with_jitter_3']=examples.example_D_quadrotor_attitude_three_axis(perfect_timing=False)
         systems['unsolved/unstable/E_timer']=examples.example_E_timer()
         assert systems['unsolved/unstable/E_timer'].nominal_case_stability() == 'borderline unstable'
+        
+        for timing_percent in [0, 10, 20, 40]:
+            system=examples.example_D_quadrotor_attitude_three_axis(perfect_timing=False);
+            system.increase_timing(timing_percent);
+            system.spaceex_timeout = 1;
+            system.plot_t_max = 0.25;
+            systems['demo/D3_' + str(timing_percent) + '_ONLY_SIMULATION___quadrotor_attitude_three_axis_large_jitter_3'] = system;
     
     for key in systems:
         systems[key] = HybridSysControlLoop(systems[key])
