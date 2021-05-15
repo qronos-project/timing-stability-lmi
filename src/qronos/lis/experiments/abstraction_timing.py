@@ -11,11 +11,15 @@ import qronos.lis.lis as l
 from qronos.lis import analyze
 import qronos.examples as ex
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 import tikzplotlib
 import scipy.linalg
 from qronos.lis.generic_matrix import NumpyMatrix
 from copy import deepcopy
+
+# workaround https://github.com/matplotlib/matplotlib/issues/8423
+matplotlib.rcParams['axes.unicode_minus']=False
 
 # %%
 def main(argv):
@@ -209,6 +213,8 @@ def main(argv):
     default_scenario['delta_t_max_permitted'] = 10
     default_scenario['title'] = 'nominal case, perfect timing, no skips'
     default_scenario['soundness'] = True # check if abstraction guarantee holds in simulation -- disable only for heuristically chosen pseudo-abstraction parameters
+    default_scenario['forced_skip'] = None # force skip sequence regardless of abstraction: [ (skip_ctrl_1, [skip_y1_1, skip_y2_1, ...], [skip_u1_1, skip_u2_1, ...]), (skip_ctrl_2, ...), ...]
+    default_scenario['forced_timing'] = None # force timing sequence regardless of abstraction: [ timing_scale_1, timing_scale_2, ... ],  given relative to delta_t_max_permitted (0...1)
 
     default_scenario['permit_skip'] = False
     default_scenario['permit_delta_t'] = False
@@ -220,18 +226,42 @@ def main(argv):
     scenario = deepcopy(default_scenario)
     scenario['runs'] = 1
     scenarios = [scenario]
+    
+    scenario = deepcopy(default_scenario)
+    scenario['title'] = 'skips, fixed, short'
+    # skip 5 execute 2
+    scenario['forced_skip'] = [(False, [False]*3, [False]*4)]*20 + ([(True, [True, True, True], [True,True,True,True])]*5 + [(False, [False, False, False], [False]*4)]*2)*50 + [(True, [True]*3, [True]*4)]*10 +  [(False, [False]*3, [False]*4)]*15 +  [(True, [True]*3, [True]*4)]*10 +  [(False, [False]*3, [False]*4)]*99
+    scenario['permit_skip'] = True
+    scenario['soundness'] = False
+    scenarios.append(scenario)
 
     scenario = deepcopy(default_scenario)
+    # skip 10 execute 15
+    scenario['forced_skip'] = [(False, [False]*3, [False]*4)]*20 + ([(True, [True, True, True], [True,True,True,True])]*10 + [(False, [False, False, False], [False]*4)]*15)*50 + [(True, [True]*3, [True]*4)]*10 +  [(False, [False]*3, [False]*4)]*15 +  [(True, [True]*3, [True]*4)]*10 +  [(False, [False]*3, [False]*4)]*99
     scenario['permit_skip'] = True
-    scenario['title'] = 'skips, deterministic'
-    scenarios.append(scenario)
-
-    scenario = deepcopy(scenario)
-    scenario['skip_probability'] = 0.02
-    scenario['title'] = 'skips, low probability'
+    scenario['title'] = 'skips fixed long'
     scenarios.append(scenario)
     
+    
+    scenario = deepcopy(default_scenario)
+    scenario['title'] = 'timing forced max'
+    scenario['permit_delta_t'] = True
+    scenario['forced_timing'] = [0]*50 + [1]*100;
+    scenario['delta_t_max_permitted'] = 49
+    scenarios.append(scenario)    
+    
+    
     if "--fast" not in argv:
+        scenario = deepcopy(default_scenario)
+        scenario['permit_skip'] = True
+        scenario['title'] = 'skips, deterministic'
+        scenarios.append(scenario)
+
+        scenario = deepcopy(scenario)
+        scenario['skip_probability'] = 0.02
+        scenario['title'] = 'skips, low probability'
+        scenarios.append(scenario)
+    
         scenario = deepcopy(scenario)
         scenario['skip_probability'] = 0.1
         scenario['title'] = 'skips, medium probability'
@@ -302,6 +332,9 @@ def main(argv):
             w[lis.sys.m:, :] = 0
             # normalize to |w_k|<1
             w = w / np.broadcast_to(np.sqrt(np.sum(w ** 2, axis=0)), (lis.n, L))
+            #if run == 1:
+                #w[(1),:]=1
+                #w[(0,2,3),:]=0
             # w[:,120:]=0.1*w[:,120:]
             may_skip_y = np.full(L, False)
             may_skip_all_u = may_skip_y.copy()
@@ -357,6 +390,8 @@ def main(argv):
                                 skip_ctrl[i ] = True
                                 skip_y[:, i] = True
                                 skip_u[:, i] = True
+                        if scenario['forced_skip'] is not None:
+                            [skip_ctrl[i], skip_y[:, i], skip_u[:, i]] = scenario['forced_skip'][i]
                     rho_i = None
                     if any(skip_u[:, i]) or any(skip_y[:, i]) or skip_ctrl[i]:
                         rho_i = min([rho_conditional for (condition, rho_conditional) in scenario['rho_skip'].items() if
@@ -379,6 +414,8 @@ def main(argv):
                     may_scale_delta_t[i] = ((scenario['y_max_permitted'] - beta - 1e-9) / (abstraction[i] + 1e-99)
                                             - offset) / scale
                     may_scale_delta_t[i] = np.clip(may_scale_delta_t[i], 0, scenario['delta_t_max_permitted'])
+                    if scenario['forced_timing'] is not None:
+                        may_scale_delta_t[i] = scenario['forced_timing'][i] * scenario['delta_t_max_permitted']
                     # clip precomputed random delta-t to permissible (scaled) range
                     delta_t_u[:, i] = np.clip(delta_t_u[:, i],
                                                 lis.sys.delta_t_u_min * may_scale_delta_t[i],
@@ -407,12 +444,15 @@ def main(argv):
                     abstraction_worst_predicted = beta + abstraction[i] * (offset + scale * may_scale_delta_t[i])
                     abstraction[i + 1] = beta + abstraction[i] * (offset + scale * scale_delta_t[i])
                     assert abstraction[i + 1] <= abstraction_worst_predicted * (1 + 1e-12)
-                    assert abstraction_worst_predicted <= scenario['y_max_permitted']
+                    if scenario['forced_timing'] is None:
+                        assert abstraction_worst_predicted <= scenario['y_max_permitted']
             plt.subplot(2, 1, 1)
             plt.grid()
             plt.plot([0, L], [scenario['y_max_permitted'], scenario['y_max_permitted']], 'k--',
                     label='allowed maximum' if first else '_nolabel_')
+            abstraction[abstraction > 1e3] = np.inf; # work around pgfplots floating-point error
             plt.plot(abstraction, color=plt.cm.Set1.colors[2], label='abstraction' if first else '_nolabel_')
+            # plt.ylim(0,11); -> disabled to avoid NotImplementedError
             plt.subplot(2, 1, 2)
             plt.xlabel('$k$')
             plt.grid()
@@ -518,4 +558,4 @@ def main(argv):
             print("Cannot save file, does the output dir exist? is the script run from its directory? " + str(e))
 
 if __name__ == "__main__":
-    main(argv)
+    main(sys.argv)
