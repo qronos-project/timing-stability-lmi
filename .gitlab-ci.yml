@@ -5,4 +5,4 @@ variables:
 test:
     script:
         - ./run_tests_docker.sh
-        - ./run_experiments_docker.sh --fast
+        - ./run_experiments_docker.sh ALL --fast

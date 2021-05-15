@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+set -o pipefail
+IFS=$'\n\t'
 
 test -f hyst/Dockerfile || { echo "The hyst submodule is missing, or you are not in the right directory"; exit 1; }
 
