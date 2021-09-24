@@ -53,6 +53,10 @@ def main(argv):
         systems['unsolved/unknown/C2_quadrotor_one_axis_with_jitter_1']=examples.example_C_quadrotor_attitude_one_axis(perfect_timing=False)
         systems['unsolved/stable/D1_quadrotor_attitude_three_axis_no_jitter_3']=examples.example_D_quadrotor_attitude_three_axis(perfect_timing=True)
         systems['unsolved/unknown/D2_quadrotor_attitude_three_axis_with_jitter_3']=examples.example_D_quadrotor_attitude_three_axis(perfect_timing=False)
+        systems['unsolved/unknown/D2b']=examples.example_D2b()
+        systems['unsolved/unknown/D2c']=examples.example_D2c()
+        systems['unsolved/unknown/D2d']=examples.example_D2d()
+        systems['unsolved/unknown/D2e']=examples.example_D2e()
         systems['unsolved/unstable/E_timer']=examples.example_E_timer()
         assert systems['unsolved/unstable/E_timer'].nominal_case_stability() == 'borderline unstable'
         

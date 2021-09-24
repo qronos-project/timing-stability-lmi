@@ -250,6 +250,51 @@ def example_D_quadrotor_attitude_three_axis(perfect_timing=False):
     # 5000 -> timeout for perfect_timing=False, K>800 for perfect_timing=True
     return system
 
+def example_D2b():
+    '''
+    Example D2b from Gaukler et al IFAC2020 https://doi.org/10.1016/j.ifacol.2020.12.1019
+    
+    = Example D2 with doubled timing uncertainty
+    '''
+    s = example_D_quadrotor_attitude_three_axis()
+    s.increase_timing(2)
+    return s
+
+def example_D2c():
+    '''
+    Example D2c from Gaukler et al IFAC2020 https://doi.org/10.1016/j.ifacol.2020.12.1019
+    
+    = Example D2 with doubled dimension
+    '''
+    s = example_D_quadrotor_attitude_three_axis()
+    s.increase_dimension(2)
+    s.skip_simulation = True # Workaround: PySim crashes (out of memory), so skip it
+    return s
+
+
+def example_D2d():
+    '''
+    Example D2d from Gaukler et al IFAC2020 https://doi.org/10.1016/j.ifacol.2020.12.1019
+    
+    = Example D2  with dimension*2, dt_y_max=0.1*dt_y_max
+    '''
+    s = example_D_quadrotor_attitude_three_axis()
+    s.increase_dimension(2)
+    s.delta_t_y_max=0.1*s.delta_t_y_max
+    s.skip_simulation = True # Workaround: PySim crashes (out of memory), so skip it
+    return s
+
+
+def example_D2e():
+    '''
+    Example D2e from Gaukler et al IFAC2020 https://doi.org/10.1016/j.ifacol.2020.12.1019
+    
+    = Example D2  with dt_y_max=0.1*dt_y_max
+    '''
+    s = example_D_quadrotor_attitude_three_axis()
+    s.delta_t_y_max=0.1*s.delta_t_y_max
+    return s
+
 def example_E_timer():
     '''
     not really an example, just a simple test to visualize the timing.

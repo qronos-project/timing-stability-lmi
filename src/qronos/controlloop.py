@@ -51,6 +51,9 @@ class DigitalControlLoop(object):
 
         # SpaceEx: simulation only? (deterministic x0)
         self.spaceex_only_simulate = False
+        
+        # Skip PySim simulation (experimental, only as a workaround if PySim crashes)
+        self.skip_simulation = False
 
         # apply continuization? (only for internal use by HybridSysControlLoop)
         self.continuize = False

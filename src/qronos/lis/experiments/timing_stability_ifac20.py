@@ -31,25 +31,15 @@ def analyze_examples(argv):
         problems['D2'] = s
     
         # Example d2, timing*2
-        s = examples.example_D_quadrotor_attitude_three_axis()
-        s.increase_timing(2)
-        problems[r'D2\textsubscript{b}: $2\Delta t$'] = s
+        problems[r'D2\textsubscript{b}: $2\Delta t$'] = examples.example_D2b();
     
-        # Example D2, dimension*2
-        s = examples.example_D_quadrotor_attitude_three_axis()
-        s.increase_dimension(2)
-        problems[r'D2\textsubscript{c}: $2n$'] = s
+        problems[r'D2\textsubscript{c}: $2n$'] = examples.example_D2c();
     
         # Example D2, dimension*2, dt_y_max=0.1*dt_y_max
-        s = examples.example_D_quadrotor_attitude_three_axis()
-        s.increase_dimension(2)
-        s.delta_t_y_max=0.1*s.delta_t_y_max
-        problems[r'D2\textsubscript{d}: $2n$, $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$\ifpaper{\!\!}'] = s
+        problems[r'D2\textsubscript{d}: $2n$, $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$\ifpaper{\!\!}'] = examples.example_D2d();
 
         # Example D2, dt_y_max=0.1*dt_y_max
-        s = examples.example_D_quadrotor_attitude_three_axis()
-        s.delta_t_y_max=0.1*s.delta_t_y_max
-        problems[r'D2\textsubscript{e}: $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$\ifpaper{\!\!}'] = s
+        problems[r'D2\textsubscript{e}: $\frac{\overline{\Delta t}_{\subsMeasure}}{10}$\ifpaper{\!\!}'] = examples.example_D2e();
 
 
     results = {}

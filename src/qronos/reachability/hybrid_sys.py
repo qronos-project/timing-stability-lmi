@@ -149,44 +149,46 @@ class HybridSysControlLoop(object):
         xlim = [0, self.s.plot_t_max or ((self.s.spaceex_iterations_for_global_time or self.s.spaceex_iterations) * self.s.T / (self.s.m + self.s.p))]
         ylim_xp = [(self.s.plot_ylim_xp[i] if self.s.plot_ylim_xp else None) for i in range(self.s.n_p)]
         ylim_xd = [(self.s.plot_ylim_xd[i] if self.s.plot_ylim_xd else None) for i in range(self.s.n_d)]
-        res = e.run(parse_output=True, image_path = model_file_pysim + "_pysim_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0])
-        self.results['pysim_hypy'] = res
-        assert res['code'] == hypy.Engine.SUCCESS, "running pysim failed:" + repr(res)
-        #PrettyPrinter(depth=3).pprint(res)
-        pysim_state_bounds = res['output']['interval_bounds']
-        #print("PySim min/max states, including simulation-internal states (global time, random number)")
-        #print(pysim_state_bounds)
-        if self.s.continuize:
-            assert self.s.immediate_ctrl
-            print("PySim min/max states (x_p_{1...n_p}, x_d_{1...n_d}, delta_p, delta_c, t")
-        elif self.s.immediate_ctrl:
-            print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}")
-            pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d)), :]
-        else:
-            print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}, u_{1...m}, y_{1...p})")
-            pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d + self.s.m + self.s.p)), :]
-        self.results['pysim_state_bounds'] = pysim_state_bounds
-        print(pysim_state_bounds)
+        if not self.s.skip_simulation:
+            res = e.run(parse_output=True, image_path = model_file_pysim + "_pysim_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0])
+            self.results['pysim_hypy'] = res
+            assert res['code'] == hypy.Engine.SUCCESS, "running pysim failed:" + repr(res)
+            #PrettyPrinter(depth=3).pprint(res)
+            pysim_state_bounds = res['output']['interval_bounds']
+            #print("PySim min/max states, including simulation-internal states (global time, random number)")
+            #print(pysim_state_bounds)
+            if self.s.continuize:
+                assert self.s.immediate_ctrl
+                print("PySim min/max states (x_p_{1...n_p}, x_d_{1...n_d}, delta_p, delta_c, t")
+            elif self.s.immediate_ctrl:
+                print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}")
+                pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d)), :]
+            else:
+                print("PySim min/max states (tau, x_p_{1...n_p}, x_d_{1...n_d}, u_{1...m}, y_{1...p})")
+                pysim_state_bounds = pysim_state_bounds[[0] + list(range(2, 2 + self.s.n_p + self.s.n_d + self.s.m + self.s.p)), :]
+            self.results['pysim_state_bounds'] = pysim_state_bounds
+            print(pysim_state_bounds)
 
-        if extra_plots and not self.s.continuize:
-            # PySim: plot over tau
-            e = hypy.Engine('pysim', pysim_options.format(x=0, y=2))
-            e.set_input(model_file_pysim)
-            assert e.run(image_path = model_file_pysim + "_pysim_plot_xp1_over_tau.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+            if extra_plots and not self.s.continuize:
+                # PySim: plot over tau
+                e = hypy.Engine('pysim', pysim_options.format(x=0, y=2))
+                e.set_input(model_file_pysim)
+                assert e.run(image_path = model_file_pysim + "_pysim_plot_xp1_over_tau.png")['code'] == hypy.Engine.SUCCESS, "running pysim failed"
 
-        if extra_plots:
-            # Pysim: plot all states over t
-            # note that xp1 was already plotted earlier.
-            # xp2 ... xpN
-            for i in range(1, self.s.n_p):
-                e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1 + i))
-                e.set_input(model_file_pysim)
-                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xp{i+1}_over_t.png", xlim=xlim, ylim=ylim_xp[i])['code'] == hypy.Engine.SUCCESS, "running pysim failed"
-            # xd1 ... xdN
-            for i in range(0, self.s.n_d):
-                e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xd1 + i))
-                e.set_input(model_file_pysim)
-                assert e.run(image_path = model_file_pysim + f"_pysim_plot_xd{i+1}_over_t.png", xlim=xlim, ylim=ylim_xd[i])['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+            if extra_plots:
+                # Pysim: plot all states over t
+                # note that xp1 was already plotted earlier.
+                # xp2 ... xpN
+                for i in range(1, self.s.n_p):
+                    e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xp1 + i))
+                    e.set_input(model_file_pysim)
+                    assert e.run(image_path = model_file_pysim + f"_pysim_plot_xp{i+1}_over_t.png", xlim=xlim, ylim=ylim_xp[i])['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+                # xd1 ... xdN
+                for i in range(0, self.s.n_d):
+                    e = hypy.Engine('pysim', pysim_options.format(x=idx_t, y=idx_xd1 + i))
+                    e.set_input(model_file_pysim)
+                    assert e.run(image_path = model_file_pysim + f"_pysim_plot_xd{i+1}_over_t.png", xlim=xlim, ylim=ylim_xd[i])['code'] == hypy.Engine.SUCCESS, "running pysim failed"
+                    
 
         # SpaceEx: interval bounds
         e = hypy.Engine('spaceex', '-output-format INTV -output_vars *')
