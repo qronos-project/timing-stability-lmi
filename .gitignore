@@ -10,3 +10,4 @@ source-complete.tar.gz
 slprj/
 *.slxc
 *.orig
+output.tar.gz
