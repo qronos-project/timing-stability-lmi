@@ -6,7 +6,7 @@ services:
     entrypoint: "true"
   web:
     # RAM limit to avoid host crash
-    mem_limit: 12g
+    mem_limit: 9g
     build:
       context: .
       args:
