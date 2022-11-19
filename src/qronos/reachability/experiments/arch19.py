@@ -9,6 +9,8 @@ Worst-Case Analysis of Digital Control Loops with Uncertain Input/Output Timing
 ARCH19. International Workshop on Applied veRification for Continuous and Hybrid Systems
 
 (Note: The original code corresponding to that publication was published on https://github.com/qronos-project/arch19-benchmark-iotiming . It has been merged into this codebase.)
+
+See also: Doctoral Thesis by Maximilian Gaukler 2022, Chapter 4.2.10 Experiments with Direct Reachability Analysis.
 """
 
 import os

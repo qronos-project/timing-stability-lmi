@@ -2,10 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """
-Experiments on Continuization (not yet published)
+Experiments on Continuization
 
-TODO: merge this file with arch19.py as soon as everything is supported by continuization
+Gaukler, Maximilian (2020): Analysis of Real-Time Control Systems using First-Order Continuization.
+In: 7th International Workshop on Applied Verification of Continuous and Hybrid Systems (ARCH20).
+https://doi.org/10.29007/8nq6
+
+See also: Doctoral Thesis by Maximilian Gaukler 2022, Chapter 5.2 Continuization of Hybrid Automata.
 """
+# Possible improvement: Merge this file with the other reachability experiments by making everything configurable
 
 import os
 import shutil

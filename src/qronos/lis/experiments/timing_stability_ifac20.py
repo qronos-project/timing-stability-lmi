@@ -5,6 +5,7 @@
 Experiments for:
 "Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing" (Gaukler et al., 2019/2020; IFAC World Congress 2020).
 An extended preprint including details and proofs is available at https://arxiv.org/abs/1911.02537
+See also the Doctoral Thesis by Maximilian Gaukler 2022, Chapter 5.1 Stability Analysis using Linear Impulsive Systems.
 """
 
 from qronos import examples

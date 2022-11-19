@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Experiments on Convergence Rate Abstractions for uncertain timing or skipped events
+Doctoral Thesis by Maximilian Gaukler 2022, Chapters 6 Convergence Rate Abstractions / 7 Dynamic Resource Management.
+(As of 11/2022, there is no corresponding conference/journal publication yet, only the upcoming thesis. Later publications may or may not use a separate codebase.)
 """
 import os
 import re
