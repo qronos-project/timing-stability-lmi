@@ -21,6 +21,7 @@ ADD src/qronos/requirements* /
 
 # Custom mpmath version until all changes are merged and released upstream
 RUN apt-get -qy remove python3-mpmath
+RUN apt-get -qy install python3-setuptools-scm
 ADD mpmath /mpmath
 RUN rm -rf /mpmath/.git
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=999.999.42 pip3 install -e /mpmath
@@ -30,8 +31,8 @@ RUN pip3 install pip==20.3.1
 RUN pip3 check
 # For reproducibility, fixed versions are installed (generated using pip3 freeze).
 # For development, uncomment the following 'non-frozen' line (newest versions) and comment out the 'frozen' one below (fixed versions):
-RUN pip3 install -r /requirements.txt # nonfrozen, will install latest available versions
-# RUN pip3 install -r /requirements-frozen-py3.txt # frozen, fixed versions
+# RUN pip3 install -r /requirements.txt # nonfrozen, will install latest available versions
+RUN pip3 install -r /requirements-frozen-py3.txt # frozen, fixed versions
 # Regenerate requirements-frozen-py3.txt by running `pip3 freeze -l | grep -v -- ^-e > qronos/requirements-frozen-py3.txt` inside the container, *after it was built with the non-frozen requirements.txt*
 
 WORKDIR /src
