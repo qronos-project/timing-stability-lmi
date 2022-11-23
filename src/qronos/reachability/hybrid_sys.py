@@ -269,7 +269,7 @@ class HybridSysControlLoop(object):
             # SpaceEx: plot over global time
             e = hypy.Engine('spaceex', '-output-format GEN -output_vars t,x_p_1')
             e.set_input(model_file_global_time)
-            plot_gen_status = e.run(image_path = model_file_global_time + "__spaceex_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0])['code']
+            plot_gen_status = e.run(image_path = model_file_global_time + "__spaceex_plot_xp1_over_t.png", xlim=xlim, ylim=ylim_xp[0], timeout=10 if "--fast" in sys.argv else self.s.spaceex_timeout_extra_plots)['code']
             if plot_gen_status != hypy.Engine.SUCCESS:
                 print("Warning: SpaceEx failed to generate extra plot xp1 over t")
 

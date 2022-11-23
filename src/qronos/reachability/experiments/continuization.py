@@ -145,6 +145,7 @@ def main(argv):
         systems['C3_T_0.001']=example_C3_discrete_PI()
         systems['C3_T_0.001'].T = 0.001
         systems['C3_T_0.001'].spaceex_timeout = systems['C3'].spaceex_timeout # see above
+        systems['C3_T_0.001'].spaceex_timeout_extra_plots = 3600 # something is wrong with SpaceEx for this system, computing the extra plots takes forever --> abort early
 
 
     for key in systems:

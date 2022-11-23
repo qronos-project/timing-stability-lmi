@@ -70,8 +70,10 @@ class DigitalControlLoop(object):
         self.spaceex_time_horizon_periods = 25
         # maximum iterations (make small enough so that the timeout isn't hit)
         self.spaceex_iterations = 2000
-        # timeout (in computer time) - problematic because it may be hit on slower computers
+        # timeout for reachability analysis (computation time in seconds) - problematic because it may be hit on slower computers
         self.spaceex_timeout = 7200
+        # timeout for generating extra plots - (computation time in seconds) problematic because it may be hit on slower computers
+        self.spaceex_timeout_extra_plots = 5*60*60
         # maximum iterations for "reachability over global time" plot (None: same as spaceex_iterations)
         self.spaceex_iterations_for_global_time = None
         # Scenario (overapproximation) - ignored for simulation
