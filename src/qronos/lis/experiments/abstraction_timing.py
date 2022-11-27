@@ -545,9 +545,9 @@ def main(argv):
         # plt.subplots_adjust(right=.6)
         plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.title(scenario['title'])
-        dirname = "../../../../output/abstraction-timing-" + re.sub("[^a-zA-Z]", "_", scenario['title']) + "/"
+        dirname = "../../../../output/abstraction/abstraction-timing-" + re.sub("[^a-zA-Z]", "_", scenario['title']) + "/"
         try:
-            os.mkdir(dirname)
+            os.makedirs(dirname)
         except FileExistsError:
             pass
         fname = dirname + "plot"

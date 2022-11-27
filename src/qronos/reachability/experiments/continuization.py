@@ -25,7 +25,7 @@ from copy import deepcopy
 import qronos.examples
 
 def output_dir():
-    return os.path.dirname(os.path.realpath(__file__)) + "/output_continuization/"
+    return os.path.dirname(os.path.realpath(__file__)) + "/../../../../output/continuization_arch20/"
 
 from qronos.controlloop import DigitalControlLoop
 

@@ -25,3 +25,5 @@ docker-compose build
 # -T: prevent artifacts (special terminal characters) in the logfile
 # python -u: unbuffered stdin/stdout to avoid print delays on the console
 docker-compose run -T web python3 -u -m qronos.run_experiments $@ 2>&1 | tee ./logfile.txt
+echo
+echo done.

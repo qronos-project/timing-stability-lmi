@@ -26,7 +26,7 @@ from qronos.util.latex_table import generate_table, format_float_ceil
 from hybridpy import hypy
 
 def output_dir():
-    return os.path.dirname(os.path.realpath(__file__)) + "/output/"
+    return os.path.dirname(os.path.realpath(__file__)) + "/../../../../output/reachability_arch19/"
 
 def main(argv):
     if "--help" in argv:

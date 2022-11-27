@@ -12,6 +12,13 @@ from qronos import examples
 from qronos.lis import analyze
 from qronos.util.latex_table import generate_table, format_float_ceil, format_float_sci_ceil
 import sys
+import os
+
+def output_dir():
+    directory = os.path.dirname(os.path.realpath(__file__)) + "/../../../../output/lis_stability_ifac20/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    return directory
 
 def analyze_examples(argv):
     """
@@ -59,9 +66,12 @@ def analyze_examples(argv):
                           ('$t_{\mathrm{approx}}$', 'r', lambda i: format_float_ceil(i.get('time_approx', float('inf')), 1)),
                           ('$t$', 'r', lambda i: '---' if not 'time' in i else format_float_ceil(i['time'], 1)),
                          ]
-    print(generate_table(columns, results.values()))
+    table = generate_table(columns, results.values())
     if "--fast" in argv:
-        print("CAUTION: The script was run with --fast. Use this ONLY for testing the code, NEVER for publication-ready results.")
+        table += "\nCAUTION: The script was run with --fast. Use this ONLY for testing the code, NEVER for publication-ready results."
+    print(table)
+    with open(output_dir() + "results.tex", "w") as f:
+        f.write(table)
 
 
 def main(argv):

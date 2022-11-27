@@ -5,4 +5,4 @@ cd "$(dirname "$0")"
 test -f hyst/README.md || { echo "Cannot find the hyst submodule, try 'git submodule update --init --recursive'"; exit 1; }
 test -f mpmath/README.rst || { echo "Cannot find the mpmath submodule, try 'git submodule update --init --recursive'"; exit 1; }
 echo "GIT Revision: "
-git describe --always --dirty
+git describe --always --dirty 2>/dev/null || echo "Not a GIT repo, local filesystem only?"

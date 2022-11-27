@@ -4,7 +4,7 @@ services:
     image: localhost/hyst_baseimage
     build: ./hyst/
     entrypoint: "true"
-  web:
+  web: # note: the name "web" is historic, there is no webserver contained anymore.
     # RAM limit to avoid host crash
     mem_limit: 9g
     build:
@@ -16,8 +16,8 @@ services:
        - CONTAINER_GID=${CONTAINER_GID:-1000}
     depends_on:
     - base
-    ports:
-     - "8888:8888"
+#    ports:
+#     - "8888:8888"
     volumes:
      - ./src:/src
      - ./output:/output
