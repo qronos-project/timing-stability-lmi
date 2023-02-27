@@ -1,10 +1,10 @@
-# Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing
+# Safety Verification of Real-Time Control Systems with Flexible Timing
 
 ## Code
 This folder contains the code for the following publications:
 
 - Doctoral thesis "Safety Verification of Real-Time Control Systems with Flexible Timing" (M. Gaukler, 2023)
-  See sourceLinksAppendix.pdf for the mapping of thesis contents to source files.
+  See README_ThesisGaukler.pdf for the mapping of thesis contents to source files.
 
 - "Stability Analysis of Multivariable Digital Control Systems with Uncertain Timing" (Gaukler et al., 2019/2020; IFAC World Congress 2020).
    An extended preprint including details and proofs is available at https://arxiv.org/abs/1911.02537
@@ -22,7 +22,7 @@ This folder contains the code for the following publications:
 An "output.tar.gz" archive file is avaiiable that contains the source and all outputs, so you don't have to run it yourself.
 https://doi.org/10.5281/zenodo.6373637
 
-See sourceLinksAppendix.pdf for the mapping of thesis contents (Gaukler, 2023) to output files.
+See README_ThesisGaukler.pdf for the mapping of thesis contents (Gaukler, 2023) to output files.
 
 # Running with docker (recommended)
 
